@@ -70,6 +70,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
         SymTableEntry classFF = classSymTable.lookup(node.getIdentifier());
         
         if(classFF != null){
+            
            ASTUtils.setType(node, classFF.getType());
         }
         else {
