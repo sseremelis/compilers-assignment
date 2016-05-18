@@ -1,0 +1,21 @@
+/*
+ * Sample program 1
+ */
+class Simple {
+
+    static void main () {
+        int i;
+        int k;
+        int j;
+        while (i < 100 ) {
+            write(i);
+            write("\n");
+            i = i+1;
+        }
+
+        if (i == 100 ) {
+            write("Done_world!\n");
+        }
+    }
+
+}

@@ -1,0 +1,30 @@
+/*
+ * Sample program 2
+ */
+class Message {
+    string text;
+    void print() {
+        write(text) ;
+    }
+}
+
+class MyProgram {
+    Message m ;
+
+    void printMany(int count) {
+        int test;
+        if (count > 0 ) {
+            m.print();
+            printMany(count-1);
+        }
+    }
+
+    static void main () {
+        MyProgram p;
+        p = new MyProgram () ;
+        p.m = new Message () ;
+        p.m.text = "Hello world\n" ;
+        p.printMany ( 100 ) ;
+    }
+}
+
