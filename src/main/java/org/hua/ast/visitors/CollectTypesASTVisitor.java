@@ -55,6 +55,9 @@ import org.objectweb.asm.Type;
 public class CollectTypesASTVisitor implements ASTVisitor {
 
     private static final String CUSTOM_CLASSES = "Lorg/hua/customclasses/";
+    private Type curClass;
+    private CompoundStatement curFunction;
+    private String curFunctionName;
 
     public CollectTypesASTVisitor() {
     }
@@ -70,7 +73,6 @@ public class CollectTypesASTVisitor implements ASTVisitor {
         SymTableEntry classFF = classSymTable.lookup(node.getIdentifier());
         
         if(classFF != null){
-            //test commit
            ASTUtils.setType(node, classFF.getType());
         }
         else {
@@ -86,7 +88,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
         Type type1 = ASTUtils.getSafeType(node.getExpression1());
         Type type2 = ASTUtils.getSafeType(node.getExpression2());
         System.out.println("type1: "+type1+" type2 " +type2);
-        if (TypeUtils.isAssignable(type1, type1)) {
+        if (TypeUtils.isAssignable(type1, type2)) {
             ASTUtils.setType(node, TypeUtils.maxType(type1, type2));
         } else {
             ASTUtils.error(node, "Not assignable types");
@@ -108,6 +110,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
             Type type2 = ASTUtils.getSafeType(node.getExpression2());
             ASTUtils.setType(node, TypeUtils.applyBinary(node.getOperator(), type1, type2));
+            System.out.println(node.getOperator()+" bin type: "+TypeUtils.applyBinary(node.getOperator(), type1, type2));
         } // 5. error if TypeException
         catch (TypeException e) {
             ASTUtils.error(node, e.getMessage());
@@ -122,6 +125,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(ClassDefinition node) throws ASTVisitorException {
+        curClass = Type.getType(CUSTOM_CLASSES+node.getIdentifier()+";");
         node.getFfDefinitions().accept(this);
         ASTUtils.setType(node, Type.VOID_TYPE);
     }
@@ -136,7 +140,6 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(CompoundStatement node) throws ASTVisitorException {
-
         node.getStatements().accept(this);
         ASTUtils.setType(node, Type.VOID_TYPE);
     }
@@ -149,6 +152,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
     @Override
     public void visit(DeclarationStatement node) throws ASTVisitorException {
         node.getType().accept(this);
+        SymTable<SymTableEntry> classSTable = Registry.getInstance().getExistingClass(curClass);
         SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
         SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
         if (sEntry == null) {
@@ -205,7 +209,8 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(FunctionDefinition node) throws ASTVisitorException {
-
+        curFunction = node.getCompoundStatement();
+        curFunctionName = node.getIdentifier();
         node.getCompoundStatement().accept(this);
         node.getParameters().accept(this);
         node.getType().accept(this);
@@ -280,13 +285,15 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(ParameterDeclaration node) throws ASTVisitorException {
-        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
-        SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
-        if (sEntry == null) {
+        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(curFunction);
+        SymTableEntry sEntry = sTable.lookupOnlyInTop(node.getIdentifier());
+        
+        if (sEntry != null) {
             ASTUtils.setType(node, node.getType().getTypeSpecifier());
         } else {            
             ASTUtils.error(node, "This parameter could not be found in the symbol table");
         }
+        
     }
 
     @Override
@@ -295,7 +302,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
             for (ParameterDeclaration pd : node.getParameters()) {
                 pd.accept(this);
             }
-        }
+        }        
         ASTUtils.setType(node, Type.VOID_TYPE);
     }
 
@@ -364,7 +371,12 @@ public class CollectTypesASTVisitor implements ASTVisitor {
     public void visit(TypeSpecifier node) throws ASTVisitorException {
         SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);    
         if (node.isClassIdentifier()) {
-            ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES+node.getIdentifier().getIdentifier()+";"));
+            if (Registry.getInstance().classExists(Type.getType(CUSTOM_CLASSES+node.getIdentifier().getIdentifier()+";"))){
+                ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES+node.getIdentifier().getIdentifier()+";"));
+            }
+            else{
+                ASTUtils.error(node, "A class of this type has not been declared.");
+            }
         }
         else{
             ASTUtils.setType(node, node.getType());            

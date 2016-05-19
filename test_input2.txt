@@ -3,7 +3,12 @@
  */
 class Message {
     string text;
-    void print() {
+    int i;
+    int j;
+    void print(int i1, int i2, int i3) {
+        i =0;              
+        j =1;
+        j =i+j;
         write(text) ;
     }
 }

@@ -53,6 +53,7 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
     
     private String curClass = "";
     private CompoundStatement curFunction;
+    private String curFunctionName;
 
     private static final String CUSTOM_CLASSES = "Lorg/hua/customclasses/";
 
@@ -102,6 +103,7 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
         } else {
             ASTUtils.error(node, "A class with the same name has already been defined (registry)");
         }
+        
 
 //        put class in symTable
 //        if (symTable.lookupOnlyInTop(classType.toString()) == null) {
@@ -193,17 +195,19 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
     @Override
     public void visit(FunctionDefinition node) throws ASTVisitorException {        
         SymTable<SymTableEntry> symTable = ASTUtils.getSafeEnv(node);
+        curFunction = node.getCompoundStatement();
+        curFunctionName = node.getIdentifier();
+        
+        
         if (symTable.lookupOnlyInTop(node.getIdentifier()) == null) {
-            SymTableEntry s = new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier());
+            SymTableEntry s = new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier(),ASTUtils.getSafeEnv(node.getParameters()));
             symTable.put(node.getIdentifier(), s);
         } else {
             ASTUtils.error(node, "A function with the same name has already been defined.");
         }
+        node.getParameters().accept(this);
 
         node.getCompoundStatement().accept(this);
-        curFunction = node.getCompoundStatement();
-        node.getParameters().accept(this);
-        
     }
 
     @Override
@@ -244,10 +248,16 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
         if (sEntry == null) {
             SymTableEntry s = new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier());
             sTable.put(node.getIdentifier(), s);
+            System.out.println("idhel: "+node.getIdentifier());
         } else {
             ASTUtils.error(node, "A parameter with the same name has already been defined for this function");
         }
-        
+        SymTable<SymTableEntry> classTable = Registry.getInstance().getExistingClass(Type.getType(CUSTOM_CLASSES+curClass+";"));
+        SymTableEntry functionEntry = classTable.lookup(curFunctionName);
+        if(functionEntry.isFunction()){
+            System.out.println("hello");
+            functionEntry.setParameter(node.getIdentifier(), new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier()));
+        }
         node.getType().accept(this);
     }
 
@@ -255,6 +265,7 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
     public void visit(ParameterList node) throws ASTVisitorException {
         if (!node.getParameters().isEmpty()) {
             for (ParameterDeclaration pd : node.getParameters()) {
+                System.out.println("param: "+pd.getIdentifier());
                 pd.accept(this);
             }
         }

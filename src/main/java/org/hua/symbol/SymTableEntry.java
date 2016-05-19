@@ -6,6 +6,7 @@ public class SymTableEntry {
 
     private String id;
     private Type type;
+    private SymTable<SymTableEntry> parameters;
 
     public SymTableEntry(String id) {
         this(id, null);
@@ -14,8 +15,31 @@ public class SymTableEntry {
     public SymTableEntry(String id, Type type) {
         this.id = id;
         this.type = type;
+        this.parameters = null;
+    }
+    
+    public SymTableEntry(String id, Type type, SymTable<SymTableEntry> parameters){
+        this.id = id;
+        this.type = type;
+        this.parameters  = parameters;
     }
 
+    public boolean isFunction(){
+        return parameters!=null;
+    }
+
+    public SymTable<SymTableEntry> getParameters() {
+        return parameters;
+    }
+
+    public void setParameters(SymTable<SymTableEntry> parameters) {
+        this.parameters = parameters;
+    }
+    
+    public void setParameter(String id,SymTableEntry param){
+        this.parameters.put(id, param);
+    }
+    
     public String getId() {
         return id;
     }
