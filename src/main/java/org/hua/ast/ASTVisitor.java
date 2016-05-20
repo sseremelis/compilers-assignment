@@ -39,7 +39,7 @@ public interface ASTVisitor {
     
     void visit(FunctionDefinition node) throws ASTVisitorException;
     
-    void visit(Identifier node) throws ASTVisitorException;
+    void visit(IdentifierExpression node) throws ASTVisitorException;
     
     void visit(IfElseStatement node) throws ASTVisitorException;
     
@@ -70,4 +70,6 @@ public interface ASTVisitor {
     void visit(WriteStatement node) throws ASTVisitorException;
 
     void visit(TypeSpecifier node) throws ASTVisitorException;
+
+    public void visit(NewIdentifierExpression node) throws ASTVisitorException;
 }

@@ -30,10 +30,11 @@ import org.hua.ast.FFDefinitionsList;
 import org.hua.ast.FieldDefinition;
 import org.hua.ast.FloatLiteralExpression;
 import org.hua.ast.FunctionDefinition;
-import org.hua.ast.Identifier;
+import org.hua.ast.IdentifierExpression;
 import org.hua.ast.IfElseStatement;
 import org.hua.ast.IfStatement;
 import org.hua.ast.IntegerLiteralExpression;
+import org.hua.ast.NewIdentifierExpression;
 import org.hua.ast.NullExpression;
 import org.hua.ast.ParameterDeclaration;
 import org.hua.ast.ParameterList;
@@ -180,7 +181,15 @@ public class SymTableBuilderASTVisitor implements ASTVisitor {
     }
 
     @Override
-    public void visit(Identifier node) throws ASTVisitorException {
+    public void visit(IdentifierExpression node) throws ASTVisitorException {
+        ASTUtils.setEnv(node, env.element());
+        if(node.getExpressions()!=null){
+            node.getExpressions().accept(this);
+        }
+    }
+    
+    @Override
+    public void visit(NewIdentifierExpression node) throws ASTVisitorException {
         ASTUtils.setEnv(node, env.element());
         if(node.getExpressions()!=null){
             node.getExpressions().accept(this);

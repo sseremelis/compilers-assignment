@@ -20,7 +20,7 @@ class MyProgram {
         int test;
         if (count > 0 ) {
             m.print();
-            printMany(count-1);
+            printMany(count-1,test);
         }
     }
 

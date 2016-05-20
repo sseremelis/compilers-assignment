@@ -25,7 +25,7 @@ import org.hua.ast.FFDefinition;
 import org.hua.ast.FFDefinitionsList;
 import org.hua.ast.FieldDefinition;
 import org.hua.ast.FunctionDefinition;
-import org.hua.ast.Identifier;
+import org.hua.ast.IdentifierExpression;
 import org.hua.ast.IfElseStatement;
 import org.hua.ast.IfStatement;
 import org.hua.ast.IntegerLiteralExpression;
@@ -46,6 +46,7 @@ import org.hua.ast.WriteStatement;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.hua.ast.NewIdentifierExpression;
 import org.objectweb.asm.Type;
 
 public class PrintASTVisitor implements ASTVisitor {
@@ -164,7 +165,15 @@ public class PrintASTVisitor implements ASTVisitor {
     }
 
     @Override
-    public void visit(Identifier node) throws ASTVisitorException {
+    public void visit(IdentifierExpression node) throws ASTVisitorException {
+        System.out.print(node.getIdentifier());
+        if(node.getExpressions()!=null){
+            node.getExpressions().accept(this);
+        }
+    }
+    
+    @Override
+    public void visit(NewIdentifierExpression node) throws ASTVisitorException {
         System.out.print(node.getIdentifier());
         if(node.getExpressions()!=null){
             node.getExpressions().accept(this);

@@ -420,19 +420,19 @@ Expr ::= INTEGER_LITERAL:l
         :}
        | IDENTIFIER:id
         {:
-            RESULT = new Identifier(id);
+            RESULT = new IdentifierExpression(id);
             RESULT.setLine(idleft);
             RESULT.setColumn(idright);
         :}
        | IDENTIFIER:id LPAREN ExprListQ:el RPAREN
         {:
-            RESULT = new Identifier(id,el,true);
+            RESULT = new IdentifierExpression(id,el);
             RESULT.setLine(idleft);
             RESULT.setColumn(idright);
         :}
        | NEW IDENTIFIER:id LPAREN ExprListQ:el RPAREN
         {:
-            RESULT = new Identifier(id,el,true);
+            RESULT = new NewIdentifierExpression(id,el);
             RESULT.setLine(idleft);
             RESULT.setColumn(idright);
         :}

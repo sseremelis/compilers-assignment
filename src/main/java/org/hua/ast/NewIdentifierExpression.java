@@ -9,34 +9,29 @@ package org.hua.ast;
  *
  * @author sssotiris22
  */
-public class Identifier extends Expression{
+public class NewIdentifierExpression extends Expression{
     
     private String identifier;
     private ExpressionList expressions;
-    private boolean isClassId;
 
-    public boolean isIsClassId() {
-        return isClassId;
+    public boolean isFunction() {
+        return expressions!=null;
     }
 
-    public void setIsClassId(boolean isClassId) {
-        this.isClassId = isClassId;
-    }
-
-    public Identifier(String identifier) {
+    public NewIdentifierExpression(String identifier) {
         this.identifier = identifier;
     }
     
-    public Identifier(String identifier, ExpressionList expr){
+    public NewIdentifierExpression(String identifier, ExpressionList expr){
         this.identifier = identifier;
         this.expressions = expr;
     }
     
-    public Identifier(String identifier, ExpressionList expr,boolean isClassId){
-        this.identifier = identifier;
-        this.expressions = expr;
-        this.isClassId = isClassId;
-    }
+//    public Identifier(String identifier, ExpressionList expr,boolean isClassId){
+//        this.identifier = identifier;
+//        this.expressions = expr;
+//        this.isFunction = isClassId;
+//    }
 
     public String getIdentifier() {
         return identifier;

@@ -1,6 +1,7 @@
 package org.hua.ast.visitors;
 
-
+import java.util.Iterator;
+import java.util.Map;
 import org.hua.Registry;
 import org.hua.ast.ASTUtils;
 import org.hua.ast.ASTVisitor;
@@ -22,10 +23,11 @@ import org.hua.ast.FFDefinitionsList;
 import org.hua.ast.FieldDefinition;
 import org.hua.ast.FloatLiteralExpression;
 import org.hua.ast.FunctionDefinition;
-import org.hua.ast.Identifier;
+import org.hua.ast.IdentifierExpression;
 import org.hua.ast.IfElseStatement;
 import org.hua.ast.IfStatement;
 import org.hua.ast.IntegerLiteralExpression;
+import org.hua.ast.NewIdentifierExpression;
 import org.hua.ast.NullExpression;
 import org.hua.ast.ParameterDeclaration;
 import org.hua.ast.ParameterList;
@@ -58,6 +60,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
     private Type curClass;
     private CompoundStatement curFunction;
     private String curFunctionName;
+    private FunctionDefinition curFunNode;
 
     public CollectTypesASTVisitor() {
     }
@@ -65,20 +68,20 @@ public class CollectTypesASTVisitor implements ASTVisitor {
     @Override
     public void visit(AccessorExpression node) throws ASTVisitorException {
         node.getExpression().accept(this);
-        node.getExpressions().accept(this);   
+        node.getExpressions().accept(this);
         SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
-        SymTableEntry sEntry = sTable.lookup(node.getIdentifier());        
+        SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
         Type exprClass = ASTUtils.getSafeType(node.getExpression());
-        SymTable<SymTableEntry> classSymTable = Registry.getInstance().getExistingClass(exprClass);        
+        SymTable<SymTableEntry> classSymTable = Registry.getInstance().getExistingClass(exprClass);
         SymTableEntry classFF = classSymTable.lookup(node.getIdentifier());
-        
-        if(classFF != null){
-           ASTUtils.setType(node, classFF.getType());
+
+        if (classFF != null) {
+            ASTUtils.setType(node, classFF.getType());
         }
         else {
             ASTUtils.error(node, "This field or function is not defined in this class");
-        }        
-        
+        }
+
     }
 
     @Override
@@ -87,10 +90,10 @@ public class CollectTypesASTVisitor implements ASTVisitor {
         node.getExpression2().accept(this);
         Type type1 = ASTUtils.getSafeType(node.getExpression1());
         Type type2 = ASTUtils.getSafeType(node.getExpression2());
-        System.out.println("type1: "+type1+" type2 " +type2);
         if (TypeUtils.isAssignable(type1, type2)) {
             ASTUtils.setType(node, TypeUtils.maxType(type1, type2));
-        } else {
+        }
+        else {
             ASTUtils.error(node, "Not assignable types");
         }
     }
@@ -110,12 +113,11 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
             Type type2 = ASTUtils.getSafeType(node.getExpression2());
             ASTUtils.setType(node, TypeUtils.applyBinary(node.getOperator(), type1, type2));
-            System.out.println(node.getOperator()+" bin type: "+TypeUtils.applyBinary(node.getOperator(), type1, type2));
         } // 5. error if TypeException
         catch (TypeException e) {
             ASTUtils.error(node, e.getMessage());
         }
-        
+
     }
 
     @Override
@@ -125,7 +127,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(ClassDefinition node) throws ASTVisitorException {
-        curClass = Type.getType(CUSTOM_CLASSES+node.getIdentifier()+";");
+        curClass = Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";");
         node.getFfDefinitions().accept(this);
         ASTUtils.setType(node, Type.VOID_TYPE);
     }
@@ -157,7 +159,8 @@ public class CollectTypesASTVisitor implements ASTVisitor {
         SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
         if (sEntry == null) {
             ASTUtils.error(node, "This variable has not been defined");
-        } else {
+        }
+        else {
             ASTUtils.setType(node, sEntry.getType());
         }
     }
@@ -202,7 +205,8 @@ public class CollectTypesASTVisitor implements ASTVisitor {
         if (entry == null) {
 
             ASTUtils.error(node, "The type of the variable has already been defined.");
-        } else {
+        }
+        else {
             ASTUtils.setType(node, entry.getType());
         }
     }
@@ -211,44 +215,93 @@ public class CollectTypesASTVisitor implements ASTVisitor {
     public void visit(FunctionDefinition node) throws ASTVisitorException {
         curFunction = node.getCompoundStatement();
         curFunctionName = node.getIdentifier();
+        curFunNode = node;
         node.getCompoundStatement().accept(this);
         node.getParameters().accept(this);
         node.getType().accept(this);
-//        why???
-        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
-        SymTableEntry seEntry = sTable.lookup(node.getIdentifier());
-        ASTUtils.setType(node, node.getType().getTypeSpecifier());
+        ASTUtils.setType(node, node.getType().getTypeSpecifier());        
     }
 
     @Override
-    public void visit(Identifier node) throws ASTVisitorException {
+    public void visit(IdentifierExpression node) throws ASTVisitorException {
+        if (node.getExpressions() != null) {
+            node.getExpressions().accept(this);
+            System.out.println("id: "+node.getIdentifier());
+            SymTable<SymTableEntry> params = ASTUtils.getParameters(node.getIdentifier());
+            //test
+            Map<Type, SymTable<SymTableEntry>> classes = Registry.getInstance().getClasses();
+            Iterator<Map.Entry<Type, SymTable<SymTableEntry>>> entries = classes.entrySet().iterator();
+            while(entries.hasNext()){
+                Map.Entry<Type, SymTable<SymTableEntry>> entry = entries.next();
+                System.out.println("class: "+entry.getKey());
+                SymTable<SymTableEntry> symTable = entry.getValue();
+                for(SymTableEntry e : symTable.getSymbols()){
+                    System.out.println("|---> id: "+e.getId()+" type: "+e.getType());
+                    if(e.getParameters()!=null){
+                        SymTable<SymTableEntry> prms = e.getParameters();
+                        for(SymTableEntry p: prms.getSymbols()){
+                            System.out.println("|---|---> param: "+p.getId()+" type: "+p.getType());
+                        }                        
+                    }
+                }
+            }
+            if(params==null){
+                ASTUtils.error(node, "This function has not been declared");
+            }
+            else{
+                System.out.println("params # "+params.getSymbols().size());
+            }
+        }
+        SymTable<SymTableEntry> existingClass = Registry.getInstance().getExistingClass(Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";"));
+        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
+        SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
+        //if the identifier is a class
+        if (sEntry == null) {
+            if (existingClass != null) {
+                ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";"));
+            }
+            else {
+                ASTUtils.error(node, "A class of this type has not been declared");
+            }
+//            ASTUtils.error(node, "This variable could not be found in the symbol table 1");
+        }
+        else if (sEntry.getType() != null) {
+            ASTUtils.setType(node, sEntry.getType());
+        }
+        else if (existingClass != null) {
+            ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";"));
+        }
+        else {
+            ASTUtils.error(node, "A class of this type has not been declared");
+        }
+        
+    }
+
+    @Override
+    public void visit(NewIdentifierExpression node) throws ASTVisitorException {
         if (node.getExpressions() != null) {
             node.getExpressions().accept(this);
         }
-        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);        
+        SymTable<SymTableEntry> existingClass = Registry.getInstance().getExistingClass(Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";"));
+        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
         SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
         if (sEntry == null) {
-            SymTable<SymTableEntry> existingClass = Registry.getInstance().getExistingClass(Type.getType(CUSTOM_CLASSES+node.getIdentifier()+";"));
-                if(existingClass !=null){
-                    ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES+node.getIdentifier()+";"));
-                }
-                else{
-                    ASTUtils.error(node, "A class of this type has not been declared");
-                }
+            if (existingClass != null) {
+                ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";"));
+            }
+            else {
+                ASTUtils.error(node, "A class of this type has not been declared");
+            }
 //            ASTUtils.error(node, "This variable could not be found in the symbol table 1");
-        } else {
-            if(sEntry.getType()!=null){
-                ASTUtils.setType(node, sEntry.getType());
-            }
-            else{
-                SymTable<SymTableEntry> existingClass = Registry.getInstance().getExistingClass(Type.getType(CUSTOM_CLASSES+node.getIdentifier()+";"));
-                if(existingClass !=null){
-                    ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES+node.getIdentifier()+";"));
-                }
-                else{
-                    ASTUtils.error(node, "A class of this type has not been declared");
-                }
-            }
+        }
+        else if (sEntry.getType() != null) {
+            ASTUtils.setType(node, sEntry.getType());
+        }
+        else if (existingClass != null) {
+            ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";"));
+        }
+        else {
+            ASTUtils.error(node, "A class of this type has not been declared");
         }
     }
 
@@ -287,13 +340,13 @@ public class CollectTypesASTVisitor implements ASTVisitor {
     public void visit(ParameterDeclaration node) throws ASTVisitorException {
         SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(curFunction);
         SymTableEntry sEntry = sTable.lookupOnlyInTop(node.getIdentifier());
-        
         if (sEntry != null) {
             ASTUtils.setType(node, node.getType().getTypeSpecifier());
-        } else {            
+        }
+        else {
             ASTUtils.error(node, "This parameter could not be found in the symbol table");
         }
-        
+        ASTUtils.setParameterType(curFunNode, node.getIdentifier(), node.getType().getType());
     }
 
     @Override
@@ -302,7 +355,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
             for (ParameterDeclaration pd : node.getParameters()) {
                 pd.accept(this);
             }
-        }        
+        }
         ASTUtils.setType(node, Type.VOID_TYPE);
     }
 
@@ -346,7 +399,8 @@ public class CollectTypesASTVisitor implements ASTVisitor {
         node.getExpression().accept(this);
         try {
             ASTUtils.setType(node, TypeUtils.applyUnary(node.getOperator(), ASTUtils.getSafeType(node.getExpression())));
-        } catch (TypeException e) {
+        }
+        catch (TypeException e) {
             ASTUtils.error(node, e.getMessage());
         }
     }
@@ -369,17 +423,17 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(TypeSpecifier node) throws ASTVisitorException {
-        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);    
+        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
         if (node.isClassIdentifier()) {
-            if (Registry.getInstance().classExists(Type.getType(CUSTOM_CLASSES+node.getIdentifier().getIdentifier()+";"))){
-                ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES+node.getIdentifier().getIdentifier()+";"));
+            if (Registry.getInstance().classExists(Type.getType(CUSTOM_CLASSES + node.getIdentifier().getIdentifier() + ";"))) {
+                ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES + node.getIdentifier().getIdentifier() + ";"));
             }
-            else{
+            else {
                 ASTUtils.error(node, "A class of this type has not been declared.");
             }
         }
-        else{
-            ASTUtils.setType(node, node.getType());            
-        }        
+        else {
+            ASTUtils.setType(node, node.getType());
+        }
     }
 }

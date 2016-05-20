@@ -1,5 +1,6 @@
 package org.hua.ast.visitors;
 
+import java.util.Iterator;
 import org.hua.Registry;
 import org.hua.ast.ASTUtils;
 import org.hua.ast.ASTVisitor;
@@ -21,10 +22,11 @@ import org.hua.ast.FFDefinitionsList;
 import org.hua.ast.FieldDefinition;
 import org.hua.ast.FloatLiteralExpression;
 import org.hua.ast.FunctionDefinition;
-import org.hua.ast.Identifier;
+import org.hua.ast.IdentifierExpression;
 import org.hua.ast.IfElseStatement;
 import org.hua.ast.IfStatement;
 import org.hua.ast.IntegerLiteralExpression;
+import org.hua.ast.NewIdentifierExpression;
 import org.hua.ast.NullExpression;
 import org.hua.ast.ParameterDeclaration;
 import org.hua.ast.ParameterList;
@@ -51,9 +53,10 @@ import org.objectweb.asm.Type;
  */
 public class CollectSymbolsASTVisitor implements ASTVisitor {
     
-    private String curClass = "";
+    private Type curClass;
     private CompoundStatement curFunction;
     private String curFunctionName;
+    private FunctionDefinition curFun;
 
     private static final String CUSTOM_CLASSES = "Lorg/hua/customclasses/";
 
@@ -96,7 +99,7 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
     public void visit(ClassDefinition node) throws ASTVisitorException {
         SymTable<SymTableEntry> symTable = ASTUtils.getSafeEnv(node);
         Type classType = Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";");
-        curClass = node.getIdentifier();
+        curClass = classType;
         //register class in Registry
         if (!Registry.getInstance().classExists(classType)) {
             Registry.getInstance().addClass(classType, symTable);
@@ -197,21 +200,29 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
         SymTable<SymTableEntry> symTable = ASTUtils.getSafeEnv(node);
         curFunction = node.getCompoundStatement();
         curFunctionName = node.getIdentifier();
+        curFun = node;
         
         
         if (symTable.lookupOnlyInTop(node.getIdentifier()) == null) {
-            SymTableEntry s = new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier(),ASTUtils.getSafeEnv(node.getParameters()));
+            SymTableEntry s = new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier());
             symTable.put(node.getIdentifier(), s);
         } else {
             ASTUtils.error(node, "A function with the same name has already been defined.");
         }
         node.getParameters().accept(this);
 
-        node.getCompoundStatement().accept(this);
+        node.getCompoundStatement().accept(this);       
     }
 
     @Override
-    public void visit(Identifier node) throws ASTVisitorException {       
+    public void visit(IdentifierExpression node) throws ASTVisitorException {       
+        if (node.getExpressions() != null) {
+            node.getExpressions().accept(this);
+        }
+    }
+    
+    @Override
+    public void visit(NewIdentifierExpression node) throws ASTVisitorException {       
         if (node.getExpressions() != null) {
             node.getExpressions().accept(this);
         }
@@ -248,16 +259,17 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
         if (sEntry == null) {
             SymTableEntry s = new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier());
             sTable.put(node.getIdentifier(), s);
-            System.out.println("idhel: "+node.getIdentifier());
         } else {
             ASTUtils.error(node, "A parameter with the same name has already been defined for this function");
         }
-        SymTable<SymTableEntry> classTable = Registry.getInstance().getExistingClass(Type.getType(CUSTOM_CLASSES+curClass+";"));
+        SymTable<SymTableEntry> classTable = Registry.getInstance().getExistingClass(curClass);
         SymTableEntry functionEntry = classTable.lookup(curFunctionName);
+        
         if(functionEntry.isFunction()){
-            System.out.println("hello");
             functionEntry.setParameter(node.getIdentifier(), new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier()));
         }
+        
+        ASTUtils.setParameter(curFunctionName, new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier()));
         node.getType().accept(this);
     }
 
@@ -265,7 +277,6 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
     public void visit(ParameterList node) throws ASTVisitorException {
         if (!node.getParameters().isEmpty()) {
             for (ParameterDeclaration pd : node.getParameters()) {
-                System.out.println("param: "+pd.getIdentifier());
                 pd.accept(this);
             }
         }

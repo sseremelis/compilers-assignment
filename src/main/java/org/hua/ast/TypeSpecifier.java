@@ -17,18 +17,18 @@ public class TypeSpecifier extends ASTNode{
 
     
     private Type type;
-    private Identifier identifier;
+    private IdentifierExpression identifier;
 
     public TypeSpecifier(Type type) {
         this.type = type;
     }
 
-    public TypeSpecifier(Identifier id) {
+    public TypeSpecifier(IdentifierExpression id) {
         this.identifier = id;
     }
     
     public TypeSpecifier(String idString){
-        this.identifier = new Identifier(idString);
+        this.identifier = new IdentifierExpression(idString);
     }
 
     public Type getType() {
@@ -39,11 +39,11 @@ public class TypeSpecifier extends ASTNode{
         this.type = type;
     }
 
-    public Identifier getIdentifier() {
+    public IdentifierExpression getIdentifier() {
         return identifier;
     }
 
-    public void setIdentifier(Identifier identifier) {
+    public void setIdentifier(IdentifierExpression identifier) {
         this.identifier = identifier;
     }
 
