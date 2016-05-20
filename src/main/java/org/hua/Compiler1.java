@@ -4,13 +4,12 @@ package org.hua;
  * This code is part of the lab exercises for the Compilers course at Harokopio
  * University of Athens, Dept. of Informatics and Telematics.
  */
-
-
 import org.hua.ast.visitors.CollectTypesASTVisitor;
 import org.hua.ast.visitors.PrintASTVisitor;
 import org.hua.ast.visitors.CollectSymbolsASTVisitor;
 import org.hua.ast.visitors.SymTableBuilderASTVisitor;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 import org.hua.ast.ASTNode;
 import org.hua.ast.ASTUtils;
@@ -28,7 +27,8 @@ public class Compiler1 {
     public static void main(String[] args) {
         if (args.length == 0) {
             LOGGER.info("Usage : java Compiler [ --encoding <name> ] <inputfile(s)>");
-        } else {
+        }
+        else {
             int firstFilePos = 0;
             String encodingName = "UTF-8";
             if (args[0].equals("--encoding")) {
@@ -36,7 +36,8 @@ public class Compiler1 {
                 encodingName = args[1];
                 try {
                     java.nio.charset.Charset.forName(encodingName); // Side-effect: is encodingName valid? 
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     LOGGER.error("Invalid encoding '" + encodingName + "'");
                     return;
                 }
@@ -65,23 +66,27 @@ public class Compiler1 {
                     LOGGER.info("-----> Semantic check");
                     LOGGER.info("-----> CollectSymbols");
                     compUnit.accept(new CollectSymbolsASTVisitor());
-                    
+
                     LOGGER.info("-----> CollectTypes");
                     compUnit.accept(new CollectTypesASTVisitor());
-
-                    Map<Type, SymTable<SymTableEntry>> pclasses = Registry.getInstance().getClasses();
-                    for(Map.Entry<Type, SymTable<SymTableEntry>> entry : pclasses.entrySet()){
-                        System.out.println("Class: "+entry.getKey());
-                        for(SymTableEntry e : entry.getValue().getSymbols()){
-                            System.out.println("    symbol table: "+e.getId());
+                    
+                    //print all classes, theis fields+functions, and functions parameters
+                    Map<Type, SymTable<SymTableEntry>> classes = Registry.getInstance().getClasses();
+                    Iterator<Map.Entry<Type, SymTable<SymTableEntry>>> entries = classes.entrySet().iterator();
+                    while (entries.hasNext()) {
+                        Map.Entry<Type, SymTable<SymTableEntry>> classEntry = entries.next();
+                        System.out.println("class: " + classEntry.getKey());
+                        SymTable<SymTableEntry> classSymTable = classEntry.getValue();
+                        for (SymTableEntry e : classSymTable.getSymbols()) {
+                            System.out.println("|---> id: " + e.getId() + " type: " + e.getType());
+                            if (e.getParameters() != null) {
+                                SymTable<SymTableEntry> prms = e.getParameters();
+                                for (SymTableEntry param : prms.getSymbols()) {
+                                    System.out.println("|---|---> param: " + param.getId() + " type: " + param.getType());
+                                }
+                            }
                         }
                     }
-                    SymTable<SymTableEntry> sym = ASTUtils.getSafeEnv(compUnit);
-                    System.out.println("length: "+sym.getSymbols().size());
-                    for(SymTableEntry en : sym.getSymbols()){
-                        System.out.println("symbol: "+en.getId()+", type: "+en.getType());
-                    }
-                    
 
                     // print program
                     LOGGER.info("Input:");
@@ -89,12 +94,15 @@ public class Compiler1 {
                     compUnit.accept(printVisitor);
 
                     LOGGER.info("Compilation done");
-                } catch (java.io.FileNotFoundException e) {
+                }
+                catch (java.io.FileNotFoundException e) {
                     LOGGER.error("File not found : \"" + args[i] + "\"");
-                } catch (java.io.IOException e) {
+                }
+                catch (java.io.IOException e) {
                     LOGGER.error("IO error scanning file \"" + args[i] + "\"");
                     LOGGER.error(e.toString());
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     LOGGER.error(e.getMessage());
                     //e.printStackTrace();
                 }

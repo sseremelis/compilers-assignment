@@ -34,6 +34,7 @@ import org.hua.ast.ParenthesisExpression;
 import org.hua.ast.ReturnStatement;
 import org.hua.ast.Statement;
 import org.hua.ast.StatementList;
+import org.hua.ast.StorageSpecifier;
 import org.hua.ast.StringLiteralExpression;
 import org.hua.ast.ThisExpression;
 import org.hua.ast.TypeSpecifier;
@@ -57,6 +58,7 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
     private CompoundStatement curFunction;
     private String curFunctionName;
     private FunctionDefinition curFun;
+    private int mainCount = 0;
 
     private static final String CUSTOM_CLASSES = "Lorg/hua/customclasses/";
 
@@ -123,6 +125,9 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
         for (ClassDefinition cd : node.getClassDefinitions()) {
             cd.accept(this);
         }
+        if(mainCount!=1){
+            ASTUtils.error(node, "One main function (returns void, 0 parameters, static) should be declared");
+        }else{System.out.println("it's ok");}
     }
 
     @Override
@@ -201,6 +206,17 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
         curFunction = node.getCompoundStatement();
         curFunctionName = node.getIdentifier();
         curFun = node;
+        
+        if(node.getIdentifier().equals("main") 
+                && node.getType().getType().equals(Type.VOID_TYPE)
+                && node.getStorageSpecifier().equals(StorageSpecifier.STATIC)
+                && node.getParameters().getParameters().size()==0){
+            mainCount++;
+        }
+        
+        if(node.getIdentifier().equals("write")){
+            ASTUtils.error(node, "You cannot define a function with the name 'write'");
+        }
         
         
         if (symTable.lookupOnlyInTop(node.getIdentifier()) == null) {

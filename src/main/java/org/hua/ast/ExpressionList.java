@@ -36,5 +36,9 @@ public class ExpressionList extends Expression{
     public void accept(ASTVisitor visitor) throws ASTVisitorException {
         visitor.visit(this);
     }   
+
+    public String getIdentifier() {
+        return null;
+    }
     
 }

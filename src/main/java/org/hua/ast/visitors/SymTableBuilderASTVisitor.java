@@ -49,6 +49,7 @@ import org.hua.ast.UnaryExpression;
 import org.hua.ast.WhileStatement;
 import org.hua.ast.WriteStatement;
 import org.hua.symbol.HashSymTable;
+import org.objectweb.asm.Type;
 
 /**
  * Build symbol tables for each node of the AST.
@@ -110,6 +111,11 @@ public class SymTableBuilderASTVisitor implements ASTVisitor {
     public void visit(CompUnit node) throws ASTVisitorException {        
         pushEnvironment();        
         ASTUtils.setEnv(node, env.element());
+        //declare the standard write function
+        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
+        HashSymTable<SymTableEntry> params = new HashSymTable<SymTableEntry>();
+        params.put("p1", new SymTableEntry("p1", Type.getType("Lorg/hua/customclasses/ALL_TYPES;")));
+        sTable.put("write", new SymTableEntry("write", Type.VOID_TYPE, params));
         for (ClassDefinition cd : node.getClassDefinitions()) {
             cd.accept(this);
         }        

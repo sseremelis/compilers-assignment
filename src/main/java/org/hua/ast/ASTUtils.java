@@ -21,6 +21,7 @@ public class ASTUtils {
     public static final String TYPE_PROPERTY = "TYPE_PROPERTY";
     public static final String IS_FUNCTION = "IS_FUNCTION_PROPERTY";
     public static final String PARAMETERS_PROPERTY = "PARAMETERS_PROPERTY";
+    public static final String IS_STATIC = "IS_STATIC";
 
     private ASTUtils() {
     }
@@ -78,67 +79,100 @@ public class ASTUtils {
         throw new ASTVisitorException(node.getLine() + ":" + node.getColumn()
                 + ": " + message);
     }
-    
-    public static void setIsFunction(ASTNode node, boolean is){
+
+    public static void setIsFunction(ASTNode node, boolean is) {
         node.setProperty(IS_FUNCTION, is);
     }
-    
-    public static void setParameters(String nodeId, SymTable<SymTableEntry> params){
+
+    public static void setParameters(String nodeId, SymTable<SymTableEntry> params) {
         boolean paramsSet = false;
         Map<Type, SymTable<SymTableEntry>> classes = Registry.getInstance().getClasses();
         Iterator<Map.Entry<Type, SymTable<SymTableEntry>>> entries = classes.entrySet().iterator();
-        while(entries.hasNext()){
+        while (entries.hasNext()) {
             Map.Entry<Type, SymTable<SymTableEntry>> entry = entries.next();
-            if(entry.getValue().lookup(nodeId)!=null){
+            if (entry.getValue().lookup(nodeId) != null) {
                 entry.getValue().lookup(nodeId).setParameters(params);
                 paramsSet = true;
             }
         }
-        if(!paramsSet){
-            System.out.println("No function with the name "+nodeId+ " was found to set its parameters.");
+        if (!paramsSet) {
+            System.out.println("No function with the name " + nodeId + " was found to set its parameters.");
         }
     }
-    
-    public static void setParameter(String nodeId, SymTableEntry param){        
+
+    public static void setParameter(String nodeId, SymTableEntry param) {
         boolean paramsSet = false;
         Map<Type, SymTable<SymTableEntry>> classes = Registry.getInstance().getClasses();
         Iterator<Map.Entry<Type, SymTable<SymTableEntry>>> entries = classes.entrySet().iterator();
-        while(entries.hasNext()){
+        while (entries.hasNext()) {
             Map.Entry<Type, SymTable<SymTableEntry>> entry = entries.next();
-            SymTableEntry sEntry = entry.getValue().lookup(nodeId);
-            if(sEntry!=null){
-                if(sEntry.getParameters()==null){
+            SymTableEntry sEntry = entry.getValue().lookup(nodeId);//sEntry: function sym table
+            if (sEntry != null) {
+                if (sEntry.getParameters() == null) {
                     sEntry.setParameters(new HashSymTable<SymTableEntry>());
                 }
-                entry.getValue().lookup(nodeId).setParameter(nodeId, param);
+                sEntry.setParameter(param.getId(), param);
                 paramsSet = true;
-                System.out.println("here "+nodeId+" param: "+param.getId());
             }
         }
-        if(!paramsSet){
-            System.out.println("No function with the name "+nodeId+ " was found to set its parameter.");
+        if (!paramsSet) {
+            System.out.println("No function with the name " + nodeId + " was found to set its parameter.");
         }
     }
-    
-    public static SymTable<SymTableEntry> getParameters(ASTNode node) throws ASTVisitorException{
+
+    public static SymTable<SymTableEntry> getParameters(ASTNode node) throws ASTVisitorException {
         return (SymTable<SymTableEntry>) node.getProperty(PARAMETERS_PROPERTY);
     }
-    
-    public static SymTable<SymTableEntry> getParameters(String nodeId) throws ASTVisitorException{
+
+    public static SymTable<SymTableEntry> getParameters(String nodeId) throws ASTVisitorException {
         Map<Type, SymTable<SymTableEntry>> classes = Registry.getInstance().getClasses();
         Iterator<Map.Entry<Type, SymTable<SymTableEntry>>> entries = classes.entrySet().iterator();
-        while(entries.hasNext()){
+        while (entries.hasNext()) {
             Map.Entry<Type, SymTable<SymTableEntry>> entry = entries.next();
-            if(entry.getValue().lookup(nodeId)!=null){
+            if (entry.getValue().lookup(nodeId) != null) {
                 return entry.getValue().lookup(nodeId).getParameters();
             }
         }
         return null;
     }
-    
-    public static void setParameterType(ASTNode node, String id, Type type) throws ASTVisitorException{
+
+    public static void setParameterType(ASTNode node, String id, Type type) throws ASTVisitorException {
         SymTable<SymTableEntry> params = getParameters(node);
+
         params.lookup(id).setType(type);
+    }
+
+    public static void setParameterType(String nodeId, String id, Type type) throws ASTVisitorException {
+        boolean paramsSet = false;
+        Map<Type, SymTable<SymTableEntry>> classes = Registry.getInstance().getClasses();
+        Iterator<Map.Entry<Type, SymTable<SymTableEntry>>> entries = classes.entrySet().iterator();
+        while (entries.hasNext()) {
+            Map.Entry<Type, SymTable<SymTableEntry>> entry = entries.next();
+            SymTableEntry sEntry = entry.getValue().lookup(nodeId); //function
+            if (sEntry != null) {
+                SymTable<SymTableEntry> params = sEntry.getParameters();
+                SymTableEntry parameter = params.lookup(id); //parameter
+
+                if (parameter != null) {
+                    parameter.setType(type);
+                    paramsSet = true;
+                }
+            }
+        }
+        if (!paramsSet) {
+            throw new ASTVisitorException("@@@ No parameter with the name " + id + " was found to set its type.");
+        }
+    }
+
+    public static void setIsStatic(ASTNode node, String bool) throws ASTVisitorException {
+        node.setProperty(IS_STATIC, bool);
+    }
+
+    public static boolean getIsStatic(ASTNode node) throws ASTVisitorException {
+        if ((String) node.getProperty(IS_STATIC) == "yes") {
+            return true;
+        }
+        return false;
     }
 
 }

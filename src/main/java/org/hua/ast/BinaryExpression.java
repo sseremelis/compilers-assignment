@@ -45,4 +45,8 @@ public class BinaryExpression extends Expression {
         visitor.visit(this);
     }
 
+    public String getIdentifier() {
+        return null;
+    }
+
 }

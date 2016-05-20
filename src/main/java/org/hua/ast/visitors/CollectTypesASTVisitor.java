@@ -1,6 +1,8 @@
 package org.hua.ast.visitors;
 
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import org.hua.Registry;
 import org.hua.ast.ASTUtils;
@@ -61,6 +63,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
     private CompoundStatement curFunction;
     private String curFunctionName;
     private FunctionDefinition curFunNode;
+    private boolean insideWhile = false;
 
     public CollectTypesASTVisitor() {
     }
@@ -122,6 +125,9 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(BreakStatement node) throws ASTVisitorException {
+        if(!insideWhile){
+            ASTUtils.error(node, "A break cannot exist outside a while loop.");
+        }
         ASTUtils.setType(node, Type.VOID_TYPE);
     }
 
@@ -148,6 +154,9 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(ContinueStatement node) throws ASTVisitorException {
+        if(!insideWhile){
+            ASTUtils.error(node, "A continue cannot exist outside a while loop");
+        }
         ASTUtils.setType(node, Type.VOID_TYPE);
     }
 
@@ -172,6 +181,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(ExpressionList node) throws ASTVisitorException {
+        
         if (!node.getExpressions().isEmpty()) { //if there is a list of expressions
             for (Expression e : node.getExpressions()) {
                 e.accept(this);
@@ -213,43 +223,42 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(FunctionDefinition node) throws ASTVisitorException {
+        ASTUtils.setType(node, node.getType().getTypeSpecifier());
         curFunction = node.getCompoundStatement();
         curFunctionName = node.getIdentifier();
         curFunNode = node;
         node.getCompoundStatement().accept(this);
         node.getParameters().accept(this);
         node.getType().accept(this);
-        ASTUtils.setType(node, node.getType().getTypeSpecifier());        
+                
     }
 
     @Override
     public void visit(IdentifierExpression node) throws ASTVisitorException {
         if (node.getExpressions() != null) {
             node.getExpressions().accept(this);
-            System.out.println("id: "+node.getIdentifier());
             SymTable<SymTableEntry> params = ASTUtils.getParameters(node.getIdentifier());
-            //test
-            Map<Type, SymTable<SymTableEntry>> classes = Registry.getInstance().getClasses();
-            Iterator<Map.Entry<Type, SymTable<SymTableEntry>>> entries = classes.entrySet().iterator();
-            while(entries.hasNext()){
-                Map.Entry<Type, SymTable<SymTableEntry>> entry = entries.next();
-                System.out.println("class: "+entry.getKey());
-                SymTable<SymTableEntry> symTable = entry.getValue();
-                for(SymTableEntry e : symTable.getSymbols()){
-                    System.out.println("|---> id: "+e.getId()+" type: "+e.getType());
-                    if(e.getParameters()!=null){
-                        SymTable<SymTableEntry> prms = e.getParameters();
-                        for(SymTableEntry p: prms.getSymbols()){
-                            System.out.println("|---|---> param: "+p.getId()+" type: "+p.getType());
-                        }                        
-                    }
-                }
-            }
+            
             if(params==null){
                 ASTUtils.error(node, "This function has not been declared");
             }
             else{
-                System.out.println("params # "+params.getSymbols().size());
+                if(node.getExpressions().getExpressions().size() != params.getSymbols().size()){
+                    ASTUtils.error(node, "Wrong number of parameters");
+                }
+                int pTypeCounter = params.getSymbols().size();
+                List<Expression> userParams = node.getExpressions().getExpressions();
+                for (Expression uParam : userParams){
+                    Type uParamType = ASTUtils.getSafeType(uParam);
+                    for(SymTableEntry param : params.getSymbols()){
+                        if(param.getType()==uParamType){
+                            pTypeCounter--;
+                        }
+                    }                    
+                }
+                if(pTypeCounter!=0){
+                    ASTUtils.error(node, "Wrong type of parameters");
+                }
             }
         }
         SymTable<SymTableEntry> existingClass = Registry.getInstance().getExistingClass(Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";"));
@@ -279,29 +288,40 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(NewIdentifierExpression node) throws ASTVisitorException {
-        if (node.getExpressions() != null) {
+        if(node.getExpressions()!=null){
             node.getExpressions().accept(this);
         }
-        SymTable<SymTableEntry> existingClass = Registry.getInstance().getExistingClass(Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";"));
-        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
-        SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
-        if (sEntry == null) {
-            if (existingClass != null) {
-                ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";"));
+        SymTable<SymTableEntry> params = ASTUtils.getParameters(node.getIdentifier());
+        System.out.println("curclass: "+node.getIdentifier());
+        Map<Type, SymTable<SymTableEntry>> classes = Registry.getInstance().getClasses();
+        //if the identifier in this expression is the same name with one of the classes (constructor)
+        if(classes.containsKey(Type.getType(CUSTOM_CLASSES+node.getIdentifier()+";"))){
+            System.out.println("class is here");
+            if(!node.getExpressions().getExpressions().isEmpty()){
+                SymTable<SymTableEntry> classSymTable = classes.get(Type.getType(CUSTOM_CLASSES+node.getIdentifier()+";"));
+                SymTableEntry entry = classSymTable.lookup(node.getIdentifier());
+                if(entry==null){
+                    ASTUtils.error(node, "A new constructor has not been declared");
+                }
+                if(node.getExpressions().getExpressions().size() != params.getSymbols().size()){
+                    ASTUtils.error(node, "Wrong number of parameters for this constructor");
+                }
+                int pTypeCounter = params.getSymbols().size();
+                List<Expression> userParams = node.getExpressions().getExpressions();
+                for (Expression uParam : userParams){
+                    Type uParamType = ASTUtils.getSafeType(uParam);
+                    for(SymTableEntry param : params.getSymbols()){
+                        if(param.getType()==uParamType){
+                            pTypeCounter--;
+                        }
+                    }                    
+                }
+                if(pTypeCounter!=0){
+                    ASTUtils.error(node, "Wrong type of parameters");
+                }
             }
-            else {
-                ASTUtils.error(node, "A class of this type has not been declared");
-            }
-//            ASTUtils.error(node, "This variable could not be found in the symbol table 1");
-        }
-        else if (sEntry.getType() != null) {
-            ASTUtils.setType(node, sEntry.getType());
-        }
-        else if (existingClass != null) {
-            ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES + node.getIdentifier() + ";"));
-        }
-        else {
-            ASTUtils.error(node, "A class of this type has not been declared");
+            ASTUtils.setType(node, Type.getType(CUSTOM_CLASSES+node.getIdentifier()+";"));
+        
         }
     }
 
@@ -338,19 +358,22 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(ParameterDeclaration node) throws ASTVisitorException {
+        
         SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(curFunction);
         SymTableEntry sEntry = sTable.lookupOnlyInTop(node.getIdentifier());
+        
         if (sEntry != null) {
             ASTUtils.setType(node, node.getType().getTypeSpecifier());
         }
         else {
             ASTUtils.error(node, "This parameter could not be found in the symbol table");
         }
-        ASTUtils.setParameterType(curFunNode, node.getIdentifier(), node.getType().getType());
+        ASTUtils.setParameterType(curFunctionName, node.getIdentifier(), node.getType().getType());
+        
     }
 
     @Override
-    public void visit(ParameterList node) throws ASTVisitorException {
+    public void visit(ParameterList node) throws ASTVisitorException {        
         if (!node.getParameters().isEmpty()) {
             for (ParameterDeclaration pd : node.getParameters()) {
                 pd.accept(this);
@@ -367,11 +390,19 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(ReturnStatement node) throws ASTVisitorException {
+        Type funcType = ASTUtils.getSafeType(curFunNode);
         if (node.getExpression() != null) {
             node.getExpression().accept(this);
+            Type exprType = ASTUtils.getSafeType(node.getExpression());
+            if(!funcType.equals(exprType)){
+                ASTUtils.error(node, "Return type does not match function declaration");
+            }
         }
-        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
-        System.out.println("fix me!!");
+        else{            
+            if(!funcType.equals(Type.VOID_TYPE)){
+                ASTUtils.error(node, "Wrong return type");
+            }
+        }
     }
 
     @Override
@@ -407,12 +438,14 @@ public class CollectTypesASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(WhileStatement node) throws ASTVisitorException {
+        insideWhile = true;
         node.getExpression().accept(this);
         if (!ASTUtils.getSafeType(node.getExpression()).equals(Type.BOOLEAN_TYPE)) {
             ASTUtils.error(node.getExpression(), "Invalid expression, should be boolean");
         }
         node.getStatement().accept(this);
         ASTUtils.setType(node, Type.VOID_TYPE);
+        insideWhile = false;
     }
 
     @Override
