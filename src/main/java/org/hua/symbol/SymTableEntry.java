@@ -6,6 +6,15 @@ public class SymTableEntry {
 
     private String id;
     private Type type;
+    private Integer index;
+
+    public Integer getIndex() {
+        return index;
+    }
+
+    public void setIndex(Integer index) {
+        this.index = index;
+    }
     private SymTable<SymTableEntry> parameters;
 
     public SymTableEntry(String id) {

@@ -1,11 +1,15 @@
 package org.hua.ast;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.objectweb.asm.tree.JumpInsnNode;
 import org.hua.Registry;
 import org.hua.symbol.HashSymTable;
+import org.hua.symbol.LocalIndexPool;
 import org.objectweb.asm.Type;
 
 import org.hua.symbol.SymTable;
@@ -22,6 +26,12 @@ public class ASTUtils {
     public static final String IS_FUNCTION = "IS_FUNCTION_PROPERTY";
     public static final String PARAMETERS_PROPERTY = "PARAMETERS_PROPERTY";
     public static final String IS_STATIC = "IS_STATIC";
+    public static final String LOCAL_INDEX_POOL_PROPERTY = "LOCAL_INDEX_POOL_PROPERTY";
+    public static final String NEXT_LIST_PROPERTY = "NEXT_LIST_PROPERTY";
+    public static final String BREAK_LIST_PROPERTY = "BREAK_LIST_PROPERTY";
+    public static final String CONTINUE_LIST_PROPERTY = "CONTINUE_LIST_PROPERTY";
+    public static final String TRUE_LIST_PROPERTY = "TRUE_LIST_PROPERTY";
+    public static final String FALSE_LIST_PROPERTY = "FALSE_LIST_PROPERTY";
 
     private ASTUtils() {
     }
@@ -173,6 +183,90 @@ public class ASTUtils {
             return true;
         }
         return false;
+    }
+
+    public static void setLocalIndexPool(ASTNode node, LocalIndexPool pool) {
+        node.setProperty(LOCAL_INDEX_POOL_PROPERTY, pool);
+    }
+    
+    @SuppressWarnings("unchecked")
+    public static LocalIndexPool getSafeLocalIndexPool(ASTNode node)
+            throws ASTVisitorException {
+        LocalIndexPool lip = (LocalIndexPool) node.getProperty(LOCAL_INDEX_POOL_PROPERTY);
+        if (lip == null) {
+            ASTUtils.error(node, "Local index pool not found.");
+        }
+        return lip;
+    }
+    
+    @SuppressWarnings("unchecked")
+    public static List<JumpInsnNode> getTrueList(Expression node) {
+        List<JumpInsnNode> l = (List<JumpInsnNode>) node.getProperty(TRUE_LIST_PROPERTY);
+        if (l == null) {
+            l = new ArrayList<JumpInsnNode>();
+            node.setProperty(TRUE_LIST_PROPERTY, l);
+        }
+        return l;
+    }
+
+    public static void setTrueList(Expression node, List<JumpInsnNode> list) {
+        node.setProperty(TRUE_LIST_PROPERTY, list);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static List<JumpInsnNode> getFalseList(Expression node) {
+        List<JumpInsnNode> l = (List<JumpInsnNode>) node.getProperty(FALSE_LIST_PROPERTY);
+        if (l == null) {
+            l = new ArrayList<JumpInsnNode>();
+            node.setProperty(FALSE_LIST_PROPERTY, l);
+        }
+        return l;
+    }
+
+    public static void setFalseList(Expression node, List<JumpInsnNode> list) {
+        node.setProperty(FALSE_LIST_PROPERTY, list);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static List<JumpInsnNode> getNextList(Statement node) {
+        List<JumpInsnNode> l = (List<JumpInsnNode>) node.getProperty(NEXT_LIST_PROPERTY);
+        if (l == null) {
+            l = new ArrayList<JumpInsnNode>();
+            node.setProperty(NEXT_LIST_PROPERTY, l);
+        }
+        return l;
+    }
+
+    public static void setNextList(Statement node, List<JumpInsnNode> list) {
+        node.setProperty(NEXT_LIST_PROPERTY, list);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static List<JumpInsnNode> getBreakList(Statement node) {
+        List<JumpInsnNode> l = (List<JumpInsnNode>) node.getProperty(BREAK_LIST_PROPERTY);
+        if (l == null) {
+            l = new ArrayList<JumpInsnNode>();
+            node.setProperty(BREAK_LIST_PROPERTY, l);
+        }
+        return l;
+    }
+
+    public static void setBreakList(Statement node, List<JumpInsnNode> list) {
+        node.setProperty(BREAK_LIST_PROPERTY, list);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static List<JumpInsnNode> getContinueList(Statement node) {
+        List<JumpInsnNode> l = (List<JumpInsnNode>) node.getProperty(CONTINUE_LIST_PROPERTY);
+        if (l == null) {
+            l = new ArrayList<JumpInsnNode>();
+            node.setProperty(CONTINUE_LIST_PROPERTY, l);
+        }
+        return l;
+    }
+
+    public static void setContinueList(Statement node, List<JumpInsnNode> list) {
+        node.setProperty(CONTINUE_LIST_PROPERTY, list);
     }
 
 }
