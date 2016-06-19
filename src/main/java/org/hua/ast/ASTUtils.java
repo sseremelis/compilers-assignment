@@ -268,5 +268,9 @@ public class ASTUtils {
     public static void setContinueList(Statement node, List<JumpInsnNode> list) {
         node.setProperty(CONTINUE_LIST_PROPERTY, list);
     }
+    
+    public static Integer getIndex(ASTNode node) throws ASTVisitorException{
+        return 0;
+    }
 
 }

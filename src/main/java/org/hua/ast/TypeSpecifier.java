@@ -31,6 +31,12 @@ public class TypeSpecifier extends ASTNode{
         this.identifier = new IdentifierExpression(idString);
     }
 
+    /**
+     * @return 
+     * @deprecated
+     * getType only returns type, may be null. use getTypeSpecifier
+     */
+    @Deprecated
     public Type getType() {
         return type;
     }
