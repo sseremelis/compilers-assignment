@@ -55,7 +55,10 @@ public class PrintASTVisitor implements ASTVisitor {
     public void visit(AccessorExpression node) throws ASTVisitorException {
         node.getExpression().accept(this);
         System.out.print("."+node.getIdentifier());
-        node.getExpressions().accept(this);
+        if(node.getExpressions()!=null){
+            node.getExpressions().accept(this);
+        }
+    
     }
 
     @Override

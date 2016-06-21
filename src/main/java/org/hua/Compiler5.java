@@ -78,31 +78,31 @@ public class Compiler5 {
                     LOGGER.info("Bytecode:");
                     BytecodeGeneratorASTVisitor bytecodeVisitor = new BytecodeGeneratorASTVisitor();
                     compUnit.accept(bytecodeVisitor);
-                    ClassNode cn = bytecodeVisitor.getClassNode();
-                    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS + ClassWriter.COMPUTE_FRAMES);
-                    TraceClassVisitor cv = new TraceClassVisitor(cw, new PrintWriter(System.out));
-                    cn.accept(cv);
+//                    ClassNode cn = bytecodeVisitor.getClassNode();
+//                    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS + ClassWriter.COMPUTE_FRAMES);
+//                    TraceClassVisitor cv = new TraceClassVisitor(cw, new PrintWriter(System.out));
+//                    cn.accept(cv);
                     // get code
-                    byte code[] = cw.toByteArray();
+//                    byte code[] = cw.toByteArray();
 
-                    // update to file
-                    LOGGER.info("Writing class to file Calculator.class");
-                    FileOutputStream fos = new FileOutputStream("Calculator.class");
-                    fos.write(code);
-                    fos.close();
-                    LOGGER.info("Compilation done");
-
-                    // instantiate class
-                    LOGGER.info("Loading class Calculator.class");
-                    ReloadingClassLoader rcl = new ReloadingClassLoader(ClassLoader.getSystemClassLoader());
-                    rcl.register("Calculator", code);
-                    Class<?> calculatorClass = rcl.loadClass("Calculator");
-
-                    // run main method
-                    Method meth = calculatorClass.getMethod("main", String[].class);
-                    String[] params = null;
-                    LOGGER.info("Executing");
-                    meth.invoke(null, (Object) params);
+//                    // update to file
+//                    LOGGER.info("Writing class to file Assignment.class");
+//                    FileOutputStream fos = new FileOutputStream("Assignment.class");
+//                    fos.write(code);
+//                    fos.close();
+//                    LOGGER.info("Compilation done");
+//
+//                    // instantiate class
+//                    LOGGER.info("Loading class Assignment.class");
+//                    ReloadingClassLoader rcl = new ReloadingClassLoader(ClassLoader.getSystemClassLoader());
+//                    rcl.register("Assignment", code);
+//                    Class<?> calculatorClass = rcl.loadClass("Assignment");
+//
+//                    // run main method
+//                    Method meth = calculatorClass.getMethod("main", String[].class);
+//                    String[] params = null;
+//                    LOGGER.info("Executing");
+//                    meth.invoke(null, (Object) params);
 
                     LOGGER.info("Finished execution");
                 } catch (java.io.FileNotFoundException e) {

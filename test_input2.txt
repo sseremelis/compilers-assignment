@@ -12,6 +12,7 @@ class Message {
         j =i+j;
         write(text);
     }
+    void tester(){}
     
 }
 
@@ -19,6 +20,7 @@ class MyProgram {
     Message m ;
 
     void printMany(int count) {
+        Message.tester();
         int test;
         if (count > 0 ) {
             m.print();

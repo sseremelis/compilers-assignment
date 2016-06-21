@@ -76,7 +76,9 @@ public class SymTableBuilderASTVisitor implements ASTVisitor {
     public void visit(AccessorExpression node) throws ASTVisitorException {
         ASTUtils.setEnv(node, env.element());
         node.getExpression().accept(this);
-        node.getExpressions().accept(this);
+        if(node.getExpressions()!=null){
+            node.getExpressions().accept(this);
+        }
     }
 
     @Override

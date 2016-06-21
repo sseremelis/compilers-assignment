@@ -174,15 +174,12 @@ public class ASTUtils {
         }
     }
 
-    public static void setIsStatic(ASTNode node, String bool) throws ASTVisitorException {
+    public static void setIsStatic(ASTNode node, boolean bool) throws ASTVisitorException {
         node.setProperty(IS_STATIC, bool);
     }
 
     public static boolean getIsStatic(ASTNode node) throws ASTVisitorException {
-        if ((String) node.getProperty(IS_STATIC) == "yes") {
-            return true;
-        }
-        return false;
+        return (Boolean)node.getProperty(IS_STATIC);
     }
 
     public static void setLocalIndexPool(ASTNode node, LocalIndexPool pool) {

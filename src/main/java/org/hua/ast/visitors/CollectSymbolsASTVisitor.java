@@ -41,6 +41,7 @@ import org.hua.ast.TypeSpecifier;
 import org.hua.ast.UnaryExpression;
 import org.hua.ast.WhileStatement;
 import org.hua.ast.WriteStatement;
+import org.hua.symbol.LocalIndexPool;
 import org.hua.symbol.SymTable;
 import org.hua.symbol.SymTableEntry;
 import org.objectweb.asm.Type;
@@ -77,7 +78,9 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
 //            ASTUtils.error(node, "A field with the same name has already been defined.");
 //        }
         node.getExpression().accept(this);
-        node.getExpressions().accept(this);
+        if(node.getExpressions()!=null){
+            node.getExpressions().accept(this);
+        }
     }
 
     @Override
@@ -153,6 +156,10 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
             // 3. register identifier with type in symbol table
             //    use org.objectweb.asm.Type for the type
             SymTableEntry symbol = new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier());
+            LocalIndexPool lip = ASTUtils.getSafeLocalIndexPool(node);
+            int index = lip.getLocalIndex(node.getType().getTypeSpecifier());
+            System.out.println("%%%%%%%%%% id: "+node.getIdentifier()+" index: "+index);
+            symbol.setIndex(index);
             symTable.put(node.getIdentifier(), symbol);
         } else {
             ASTUtils.error(node, "A variable with the same name has already been defined.");
@@ -221,6 +228,9 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
         
         if (symTable.lookupOnlyInTop(node.getIdentifier()) == null) {
             SymTableEntry s = new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier());
+            if(node.getStorageSpecifier()!=null){
+                s.setIsStatic(true);
+            }
             symTable.put(node.getIdentifier(), s);
         } else {
             ASTUtils.error(node, "A function with the same name has already been defined.");

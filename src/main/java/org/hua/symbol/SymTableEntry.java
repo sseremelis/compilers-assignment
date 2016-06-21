@@ -7,6 +7,15 @@ public class SymTableEntry {
     private String id;
     private Type type;
     private Integer index;
+    private boolean isStatic;
+
+    public boolean isIsStatic() {
+        return isStatic;
+    }
+
+    public void setIsStatic(boolean isStatic) {
+        this.isStatic = isStatic;
+    }
 
     public Integer getIndex() {
         return index;

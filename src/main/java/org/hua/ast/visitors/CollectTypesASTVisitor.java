@@ -71,7 +71,9 @@ public class CollectTypesASTVisitor implements ASTVisitor {
     @Override
     public void visit(AccessorExpression node) throws ASTVisitorException {
         node.getExpression().accept(this);
-        node.getExpressions().accept(this);
+        if(node.getExpressions()!=null){
+            node.getExpressions().accept(this);
+        }
         SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
         SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
         Type exprClass = ASTUtils.getSafeType(node.getExpression());
@@ -227,6 +229,7 @@ public class CollectTypesASTVisitor implements ASTVisitor {
         curFunction = node.getCompoundStatement();
         curFunctionName = node.getIdentifier();
         curFunNode = node;
+        
         node.getCompoundStatement().accept(this);
         node.getParameters().accept(this);
         node.getType().accept(this);

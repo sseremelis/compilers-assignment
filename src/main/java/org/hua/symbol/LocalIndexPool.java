@@ -31,7 +31,7 @@ public class LocalIndexPool {
     public int getLocalIndex(Type type) {
         if (type.equals(Type.DOUBLE_TYPE)) {
             return getDoubleLocalIndex();
-        } else if (type.equals(Type.INT_TYPE) || type.equals(TypeUtils.STRING_TYPE)) {
+        } else if (type.equals(Type.INT_TYPE) || type.equals(TypeUtils.STRING_TYPE) || type.getDescriptor().contains("Lorg/hua/customclasses/")) {
             return getLocalIndex();
         } else {
             throw new IllegalArgumentException("Not supported type " + type);

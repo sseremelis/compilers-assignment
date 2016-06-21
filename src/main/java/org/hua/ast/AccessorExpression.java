@@ -18,7 +18,7 @@ public class AccessorExpression extends Expression{
     public AccessorExpression(Expression expression, String identifier) {
         this.identifier = identifier;
         this.expression = expression;
-        this.expressions = new ExpressionList();
+        this.expressions = null;
     }
 
     public AccessorExpression(Expression expression, String identifier, ExpressionList expressions) {
