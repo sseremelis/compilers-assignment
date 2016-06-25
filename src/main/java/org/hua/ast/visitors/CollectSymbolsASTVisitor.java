@@ -196,10 +196,14 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
     }
 
     @Override
-    public void visit(FieldDefinition node) throws ASTVisitorException {
+    public void visit(FieldDefinition node) throws ASTVisitorException {        
         SymTable<SymTableEntry> symTable = ASTUtils.getSafeEnv(node);
         if (symTable.lookupOnlyInTop(node.getIdentifier()) == null) {
             SymTableEntry s = new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier());
+            
+            LocalIndexPool lip = ASTUtils.getSafeLocalIndexPool(node);
+            int index = lip.getLocalIndex(node.getType().getTypeSpecifier());
+            s.setIndex(index);
             symTable.put(node.getIdentifier(), s);
         } else {
             ASTUtils.error(node, "A field with the same name has already been defined.");
@@ -284,6 +288,9 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
         SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
         if (sEntry == null) {
             SymTableEntry s = new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier());
+            LocalIndexPool lip = ASTUtils.getSafeLocalIndexPool(node);
+            int index = lip.getLocalIndex(node.getType().getTypeSpecifier());
+            s.setIndex(index);
             sTable.put(node.getIdentifier(), s);
         } else {
             ASTUtils.error(node, "A parameter with the same name has already been defined for this function");

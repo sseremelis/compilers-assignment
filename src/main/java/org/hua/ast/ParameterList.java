@@ -7,6 +7,7 @@ package org.hua.ast;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.objectweb.asm.Type;
 
 /**
  *
@@ -30,6 +31,14 @@ public class ParameterList extends ASTNode{
 
     public void setParameters(List<ParameterDeclaration> parameters) {
         this.parameters = parameters;
+    }
+    
+    public Type[] getParameterTypes(){
+        ArrayList<Type> types = new ArrayList<Type>();
+        for(ParameterDeclaration pd : parameters){
+            types.add(pd.getType().getTypeSpecifier());
+        }
+        return types.toArray(new Type[types.size()]);
     }
     
     @Override

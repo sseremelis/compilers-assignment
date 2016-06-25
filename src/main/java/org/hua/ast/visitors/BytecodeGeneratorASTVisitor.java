@@ -107,9 +107,268 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 //        mn.maxStack = 1;
 //        cn.methods.add(mn);
     }
+    private void backpatch(List<JumpInsnNode> list, LabelNode labelNode) {
+        if (list == null) {
+            return;
+        }
+        for (JumpInsnNode instr : list) {
+            instr.label = labelNode;
+        }
+    }
 
     public ClassNode getClassNode() {
         return cn;
+    }
+    
+    private void handleBooleanOperator(Expression node, Operator op, Type type) throws ASTVisitorException {
+        List<JumpInsnNode> trueList = new ArrayList<JumpInsnNode>();
+        
+        if (type.equals(TypeUtils.STRING_TYPE)) {
+            mn.instructions.add(new InsnNode(Opcodes.SWAP));
+            JumpInsnNode jmp = null;
+            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false));
+            switch (op) {
+                case EQUAL:
+                    jmp = new JumpInsnNode(Opcodes.IFNE, null);
+                    break;
+                case NOT_EQUAL:
+                    jmp = new JumpInsnNode(Opcodes.IFEQ, null);
+                    break;
+                default:
+                    ASTUtils.error(node, "Operator not supported on strings");
+                    break;
+            }
+            mn.instructions.add(jmp);
+            trueList.add(jmp);
+        }
+        else if (type.equals(Type.DOUBLE_TYPE)) {
+            
+            // FIXME: add DCMPG instruction
+            // FIXME: add a JumpInsnNode with null label based on the operation
+            //        IFEQ, IFNE, IFGT, IFGE, IFLT, IFLE
+            // FIXME: add the jmp instruction into trueList
+            mn.instructions.add(new InsnNode(Opcodes.DCMPG));
+            JumpInsnNode jmp = null;
+            switch (op) {
+                case EQUAL:
+                    jmp = new JumpInsnNode(Opcodes.IFEQ, null);
+                    mn.instructions.add(jmp);
+                    break;
+                case NOT_EQUAL:
+                    jmp = new JumpInsnNode(Opcodes.IFNE, null);
+                    mn.instructions.add(jmp);
+                    break;
+                case GREATER:
+                    jmp = new JumpInsnNode(Opcodes.IFGT, null);
+                    mn.instructions.add(jmp);
+                    break;
+                case GREATER_EQUAL:
+                    jmp = new JumpInsnNode(Opcodes.IFGE, null);
+                    mn.instructions.add(jmp);
+                    break;
+                case LESS:
+                    jmp = new JumpInsnNode(Opcodes.IFLT, null);
+                    mn.instructions.add(jmp);
+                    break;
+                case LESS_EQUAL:
+                    jmp = new JumpInsnNode(Opcodes.IFLE, null);
+                    mn.instructions.add(jmp);
+                    break;
+            }
+            trueList.add(jmp);
+            
+        }
+        else {
+            JumpInsnNode jmp = null;
+            switch (op) {
+                case EQUAL:
+                    jmp = new JumpInsnNode(Opcodes.IF_ICMPEQ, null);
+                    mn.instructions.add(jmp);
+                    break;
+                case NOT_EQUAL:
+                    jmp = new JumpInsnNode(Opcodes.IF_ICMPNE, null);
+                    mn.instructions.add(jmp);
+                    break;
+                case GREATER:
+                    jmp = new JumpInsnNode(Opcodes.IF_ICMPGT, null);
+                    mn.instructions.add(jmp);
+                    break;
+                case GREATER_EQUAL:
+                    jmp = new JumpInsnNode(Opcodes.IF_ICMPGE, null);
+                    mn.instructions.add(jmp);
+                    break;
+                case LESS:
+                    jmp = new JumpInsnNode(Opcodes.IF_ICMPLT, null);
+                    mn.instructions.add(jmp);
+                    break;
+                case LESS_EQUAL:
+                    jmp = new JumpInsnNode(Opcodes.IF_ICMPLE, null);
+                    mn.instructions.add(jmp);
+                    break;
+                default:
+                    ASTUtils.error(node, "Operator not supported");
+                    break;
+            }
+            trueList.add(jmp);
+        }
+        ASTUtils.setTrueList(node, trueList);
+        List<JumpInsnNode> falseList = new ArrayList<JumpInsnNode>();
+        JumpInsnNode jmp = new JumpInsnNode(Opcodes.GOTO, null);
+        mn.instructions.add(jmp);
+        falseList.add(jmp);
+        ASTUtils.setFalseList(node, falseList);
+    }
+    
+    private void handleNumberOperator(ASTNode node, Operator op, Type type) throws ASTVisitorException {
+        if (op.equals(Operator.PLUS)) {
+            
+            // FIXME: IADD or DADD, etc.
+            //        use type.getOpcode(Opcodes.IADD) to avoid if-then
+            mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.IADD)));
+            
+        }
+        else if (op.equals(Operator.MINUS)) {
+            
+            // FIXME: ISUB or DSUB, etc.
+            //        use type.getOpcode() to avoid if-then
+            mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.ISUB)));
+            
+        }
+        else if (op.equals(Operator.MULTIPLY)) {
+            
+            // FIXME: IMUL or DMUL, etc.
+            //        use type.getOpcode() to avoid if-then
+            mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.IMUL)));
+            
+        }
+        else if (op.equals(Operator.DIVISION)) {
+            
+            // FIXME: IDIV or DDIV, etc.
+            //        use type.getOpcode() to avoid if-then
+            mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.IDIV)));
+            
+        }
+        else if (op.isRelational()) {
+            if (type.equals(Type.DOUBLE_TYPE)) {
+                mn.instructions.add(new InsnNode(Opcodes.DCMPG));
+                JumpInsnNode jmp = null;
+                switch (op) {
+                    case EQUAL:
+                        jmp = new JumpInsnNode(Opcodes.IFEQ, null);
+                        mn.instructions.add(jmp);
+                        break;
+                    case NOT_EQUAL:
+                        jmp = new JumpInsnNode(Opcodes.IFNE, null);
+                        mn.instructions.add(jmp);
+                        break;
+                    case GREATER:
+                        jmp = new JumpInsnNode(Opcodes.IFGT, null);
+                        mn.instructions.add(jmp);
+                        break;
+                    case GREATER_EQUAL:
+                        jmp = new JumpInsnNode(Opcodes.IFGE, null);
+                        mn.instructions.add(jmp);
+                        break;
+                    case LESS:
+                        jmp = new JumpInsnNode(Opcodes.IFLT, null);
+                        mn.instructions.add(jmp);
+                        break;
+                    case LESS_EQUAL:
+                        jmp = new JumpInsnNode(Opcodes.IFLE, null);
+                        mn.instructions.add(jmp);
+                        break;
+                    default:
+                        ASTUtils.error(node, "Operator not supported");
+                        break;
+                }
+                mn.instructions.add(new InsnNode(Opcodes.ICONST_0));
+                LabelNode endLabelNode = new LabelNode();
+                mn.instructions.add(new JumpInsnNode(Opcodes.GOTO, endLabelNode));
+                LabelNode trueLabelNode = new LabelNode();
+                jmp.label = trueLabelNode;
+                mn.instructions.add(trueLabelNode);
+                mn.instructions.add(new InsnNode(Opcodes.ICONST_1));
+                mn.instructions.add(endLabelNode);
+            }
+            else if (type.equals(Type.INT_TYPE)) {
+                LabelNode trueLabelNode = new LabelNode();
+                switch (op) {
+                    case EQUAL:
+                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPEQ, trueLabelNode));
+                        break;
+                    case NOT_EQUAL:
+                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPNE, trueLabelNode));
+                        break;
+                    case GREATER:
+                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPGT, trueLabelNode));
+                        break;
+                    case GREATER_EQUAL:
+                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPGE, trueLabelNode));
+                        break;
+                    case LESS:
+                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPLT, trueLabelNode));
+                        break;
+                    case LESS_EQUAL:
+                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPLE, trueLabelNode));
+                        break;
+                    default:
+                        break;
+                }
+                mn.instructions.add(new InsnNode(Opcodes.ICONST_0));
+                LabelNode endLabelNode = new LabelNode();
+                mn.instructions.add(new JumpInsnNode(Opcodes.GOTO, endLabelNode));
+                mn.instructions.add(trueLabelNode);
+                mn.instructions.add(new InsnNode(Opcodes.ICONST_1));
+                mn.instructions.add(endLabelNode);
+            }
+            else {
+                ASTUtils.error(node, "Cannot compare such types.");
+            }
+        }
+        else {
+            ASTUtils.error(node, "Operator not recognized.");
+        }
+    }
+    
+    /**
+     * Assumes top of stack contains two strings
+     */
+    private void handleStringOperator(ASTNode node, Operator op) throws ASTVisitorException {
+        if (op.equals(Operator.PLUS)) {
+            mn.instructions.add(new TypeInsnNode(Opcodes.NEW, "java/lang/StringBuilder"));
+            mn.instructions.add(new InsnNode(Opcodes.DUP));
+            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "()V", false));
+            mn.instructions.add(new InsnNode(Opcodes.SWAP));
+            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false));
+            mn.instructions.add(new InsnNode(Opcodes.SWAP));
+            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false));
+            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false));
+        }
+        else if (op.isRelational()) {
+            LabelNode trueLabelNode = new LabelNode();
+            switch (op) {
+                case EQUAL:
+                    mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false));
+                    mn.instructions.add(new JumpInsnNode(Opcodes.IFNE, trueLabelNode));
+                    break;
+                case NOT_EQUAL:
+                    mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false));
+                    mn.instructions.add(new JumpInsnNode(Opcodes.IFEQ, trueLabelNode));
+                    break;
+                default:
+                    ASTUtils.error(node, "Operator not supported on strings");
+                    break;
+            }
+            mn.instructions.add(new InsnNode(Opcodes.ICONST_0));
+            LabelNode endLabelNode = new LabelNode();
+            mn.instructions.add(new JumpInsnNode(Opcodes.GOTO, endLabelNode));
+            mn.instructions.add(trueLabelNode);
+            mn.instructions.add(new InsnNode(Opcodes.ICONST_1));
+            mn.instructions.add(endLabelNode);
+        }
+        else {
+            ASTUtils.error(node, "Operator not recognized");
+        }
     }
 
     @Override
@@ -132,13 +391,12 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
         
         node.getExpression1().accept(this);
         Type exprType1 = ASTUtils.getSafeType(node.getExpression1());
-System.out.println("~~~~~~~~~~~~~~~~~~~ DEBUG ~~~~~~~~~~~~~~~~~~~ "+node.getExpression2().getClass());
+        
         node.getExpression2().accept(this);
-
         Type exprType2 = ASTUtils.getSafeType(node.getExpression2());
 
         Type type = ASTUtils.getSafeType(node.getExpression2());
-
+        System.out.println("class1: "+node.getExpression1().getClass()+" class2: "+node.getExpression2().getClass());
         LocalIndexPool lip = ASTUtils.getSafeLocalIndexPool(node);
 
         int li = lip.getLocalIndex(type);
@@ -228,12 +486,10 @@ System.out.println("~~~~~~~~~~~~~~~~~~~ DEBUG ~~~~~~~~~~~~~~~~~~~ "+node.getExpr
         // use COMPUTE_MAXS when computing the ClassWriter,
         // e.g. new ClassWriter(ClassWriter.COMPUTE_MAXS)
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS + ClassWriter.COMPUTE_FRAMES);
-        System.out.println("here   "+cn.name);
-        classNode.accept(cw);
-        
-
         TraceClassVisitor cv = new TraceClassVisitor(cw, new PrintWriter(System.out));
+        
         cn.accept(cv);
+        System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ here   ");
         //get code
         byte code[] = cw.toByteArray();
 
@@ -253,6 +509,7 @@ System.out.println("~~~~~~~~~~~~~~~~~~~ DEBUG ~~~~~~~~~~~~~~~~~~~ "+node.getExpr
         }
 
         cn = null;
+        System.out.println("##### finished writing to file");
 
     }
 
@@ -278,6 +535,9 @@ System.out.println("~~~~~~~~~~~~~~~~~~~ DEBUG ~~~~~~~~~~~~~~~~~~~ "+node.getExpr
 
     @Override
     public void visit(DeclarationStatement node) throws ASTVisitorException {
+        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
+        SymTableEntry lookup = sTable.lookup(node.getIdentifier());
+        System.out.println("%%% id:"+node.getIdentifier()+"  index: "+lookup.getIndex());
         node.getType().accept(this);
         //nothing??
     }
@@ -334,7 +594,10 @@ System.out.println("~~~~~~~~~~~~~~~~~~~ DEBUG ~~~~~~~~~~~~~~~~~~~ "+node.getExpr
         //fix the signature
         MethodNode methodNode = new MethodNode();
         mn = methodNode;
-        mn = new MethodNode(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, node.getIdentifier(), "([Ljava/lang/String;)V", null, null);
+        System.out.println("~~~~~~~~~~~~~~~~~~~~~ Method id: "+node.getIdentifier()+" type:"+node.getType().getTypeSpecifier());
+        LocalIndexPool safeLocalIndexPool = ASTUtils.getSafeLocalIndexPool(node);
+        String methodType = Type.getMethodDescriptor(node.getType().getTypeSpecifier(), node.getParameters().getParameterTypes());
+        mn = new MethodNode(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, node.getIdentifier(), methodType, null, null);
 
         node.getCompoundStatement().accept(this);
         
@@ -388,10 +651,12 @@ System.out.println("~~~~~~~~~~~~~~~~~~~ DEBUG ~~~~~~~~~~~~~~~~~~~ "+node.getExpr
 //            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, string, string1, string2, true));
         }
         else {
+            
             Type type = ASTUtils.getSafeType(node);
-            LocalIndexPool pool = ASTUtils.getSafeLocalIndexPool(node);
-            int localIndex = pool.getLocalIndex(type);
-            mn.instructions.add(new VarInsnNode(type.getOpcode(Opcodes.ILOAD), localIndex));
+            SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
+            SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
+            System.out.println("``````````` id: "+sEntry.getId());
+            mn.instructions.add(new VarInsnNode(type.getOpcode(Opcodes.ILOAD), sEntry.getIndex()));
         }
     }
 
@@ -615,14 +880,6 @@ System.out.println("~~~~~~~~~~~~~~~~~~~ DEBUG ~~~~~~~~~~~~~~~~~~~ "+node.getExpr
         mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, ASTUtils.getSafeType(node).getDescriptor(), "<init>", "()V", false));
     }
 
-    private void backpatch(List<JumpInsnNode> list, LabelNode labelNode) {
-        if (list == null) {
-            return;
-        }
-        for (JumpInsnNode instr : list) {
-            instr.label = labelNode;
-        }
-    }
 
     /**
      * Cast the top of the stack to a particular type
@@ -658,255 +915,5 @@ System.out.println("~~~~~~~~~~~~~~~~~~~ DEBUG ~~~~~~~~~~~~~~~~~~~ "+node.getExpr
         }
     }
 
-    private void handleBooleanOperator(Expression node, Operator op, Type type) throws ASTVisitorException {
-        List<JumpInsnNode> trueList = new ArrayList<JumpInsnNode>();
-
-        if (type.equals(TypeUtils.STRING_TYPE)) {
-            mn.instructions.add(new InsnNode(Opcodes.SWAP));
-            JumpInsnNode jmp = null;
-            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false));
-            switch (op) {
-                case EQUAL:
-                    jmp = new JumpInsnNode(Opcodes.IFNE, null);
-                    break;
-                case NOT_EQUAL:
-                    jmp = new JumpInsnNode(Opcodes.IFEQ, null);
-                    break;
-                default:
-                    ASTUtils.error(node, "Operator not supported on strings");
-                    break;
-            }
-            mn.instructions.add(jmp);
-            trueList.add(jmp);
-        }
-        else if (type.equals(Type.DOUBLE_TYPE)) {
-
-            // FIXME: add DCMPG instruction
-            // FIXME: add a JumpInsnNode with null label based on the operation
-            //        IFEQ, IFNE, IFGT, IFGE, IFLT, IFLE
-            // FIXME: add the jmp instruction into trueList 
-            mn.instructions.add(new InsnNode(Opcodes.DCMPG));
-            JumpInsnNode jmp = null;
-            switch (op) {
-                case EQUAL:
-                    jmp = new JumpInsnNode(Opcodes.IFEQ, null);
-                    mn.instructions.add(jmp);
-                    break;
-                case NOT_EQUAL:
-                    jmp = new JumpInsnNode(Opcodes.IFNE, null);
-                    mn.instructions.add(jmp);
-                    break;
-                case GREATER:
-                    jmp = new JumpInsnNode(Opcodes.IFGT, null);
-                    mn.instructions.add(jmp);
-                    break;
-                case GREATER_EQUAL:
-                    jmp = new JumpInsnNode(Opcodes.IFGE, null);
-                    mn.instructions.add(jmp);
-                    break;
-                case LESS:
-                    jmp = new JumpInsnNode(Opcodes.IFLT, null);
-                    mn.instructions.add(jmp);
-                    break;
-                case LESS_EQUAL:
-                    jmp = new JumpInsnNode(Opcodes.IFLE, null);
-                    mn.instructions.add(jmp);
-                    break;
-            }
-            trueList.add(jmp);
-
-        }
-        else {
-            JumpInsnNode jmp = null;
-            switch (op) {
-                case EQUAL:
-                    jmp = new JumpInsnNode(Opcodes.IF_ICMPEQ, null);
-                    mn.instructions.add(jmp);
-                    break;
-                case NOT_EQUAL:
-                    jmp = new JumpInsnNode(Opcodes.IF_ICMPNE, null);
-                    mn.instructions.add(jmp);
-                    break;
-                case GREATER:
-                    jmp = new JumpInsnNode(Opcodes.IF_ICMPGT, null);
-                    mn.instructions.add(jmp);
-                    break;
-                case GREATER_EQUAL:
-                    jmp = new JumpInsnNode(Opcodes.IF_ICMPGE, null);
-                    mn.instructions.add(jmp);
-                    break;
-                case LESS:
-                    jmp = new JumpInsnNode(Opcodes.IF_ICMPLT, null);
-                    mn.instructions.add(jmp);
-                    break;
-                case LESS_EQUAL:
-                    jmp = new JumpInsnNode(Opcodes.IF_ICMPLE, null);
-                    mn.instructions.add(jmp);
-                    break;
-                default:
-                    ASTUtils.error(node, "Operator not supported");
-                    break;
-            }
-            trueList.add(jmp);
-        }
-        ASTUtils.setTrueList(node, trueList);
-        List<JumpInsnNode> falseList = new ArrayList<JumpInsnNode>();
-        JumpInsnNode jmp = new JumpInsnNode(Opcodes.GOTO, null);
-        mn.instructions.add(jmp);
-        falseList.add(jmp);
-        ASTUtils.setFalseList(node, falseList);
-    }
-
-    /**
-     * Assumes top of stack contains two strings
-     */
-    private void handleStringOperator(ASTNode node, Operator op) throws ASTVisitorException {
-        if (op.equals(Operator.PLUS)) {
-            mn.instructions.add(new TypeInsnNode(Opcodes.NEW, "java/lang/StringBuilder"));
-            mn.instructions.add(new InsnNode(Opcodes.DUP));
-            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKESPECIAL, "java/lang/StringBuilder", "<init>", "()V", false));
-            mn.instructions.add(new InsnNode(Opcodes.SWAP));
-            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false));
-            mn.instructions.add(new InsnNode(Opcodes.SWAP));
-            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "append", "(Ljava/lang/String;)Ljava/lang/StringBuilder;", false));
-            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/StringBuilder", "toString", "()Ljava/lang/String;", false));
-        }
-        else if (op.isRelational()) {
-            LabelNode trueLabelNode = new LabelNode();
-            switch (op) {
-                case EQUAL:
-                    mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false));
-                    mn.instructions.add(new JumpInsnNode(Opcodes.IFNE, trueLabelNode));
-                    break;
-                case NOT_EQUAL:
-                    mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/lang/String", "equals", "(Ljava/lang/Object;)Z", false));
-                    mn.instructions.add(new JumpInsnNode(Opcodes.IFEQ, trueLabelNode));
-                    break;
-                default:
-                    ASTUtils.error(node, "Operator not supported on strings");
-                    break;
-            }
-            mn.instructions.add(new InsnNode(Opcodes.ICONST_0));
-            LabelNode endLabelNode = new LabelNode();
-            mn.instructions.add(new JumpInsnNode(Opcodes.GOTO, endLabelNode));
-            mn.instructions.add(trueLabelNode);
-            mn.instructions.add(new InsnNode(Opcodes.ICONST_1));
-            mn.instructions.add(endLabelNode);
-        }
-        else {
-            ASTUtils.error(node, "Operator not recognized");
-        }
-    }
-
-    private void handleNumberOperator(ASTNode node, Operator op, Type type) throws ASTVisitorException {
-        if (op.equals(Operator.PLUS)) {
-
-            // FIXME: IADD or DADD, etc.
-            //        use type.getOpcode(Opcodes.IADD) to avoid if-then
-            mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.IADD)));
-
-        }
-        else if (op.equals(Operator.MINUS)) {
-
-            // FIXME: ISUB or DSUB, etc.
-            //        use type.getOpcode() to avoid if-then
-            mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.ISUB)));
-
-        }
-        else if (op.equals(Operator.MULTIPLY)) {
-
-            // FIXME: IMUL or DMUL, etc.
-            //        use type.getOpcode() to avoid if-then
-            mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.IMUL)));
-
-        }
-        else if (op.equals(Operator.DIVISION)) {
-
-            // FIXME: IDIV or DDIV, etc.
-            //        use type.getOpcode() to avoid if-then
-            mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.IDIV)));
-
-        }
-        else if (op.isRelational()) {
-            if (type.equals(Type.DOUBLE_TYPE)) {
-                mn.instructions.add(new InsnNode(Opcodes.DCMPG));
-                JumpInsnNode jmp = null;
-                switch (op) {
-                    case EQUAL:
-                        jmp = new JumpInsnNode(Opcodes.IFEQ, null);
-                        mn.instructions.add(jmp);
-                        break;
-                    case NOT_EQUAL:
-                        jmp = new JumpInsnNode(Opcodes.IFNE, null);
-                        mn.instructions.add(jmp);
-                        break;
-                    case GREATER:
-                        jmp = new JumpInsnNode(Opcodes.IFGT, null);
-                        mn.instructions.add(jmp);
-                        break;
-                    case GREATER_EQUAL:
-                        jmp = new JumpInsnNode(Opcodes.IFGE, null);
-                        mn.instructions.add(jmp);
-                        break;
-                    case LESS:
-                        jmp = new JumpInsnNode(Opcodes.IFLT, null);
-                        mn.instructions.add(jmp);
-                        break;
-                    case LESS_EQUAL:
-                        jmp = new JumpInsnNode(Opcodes.IFLE, null);
-                        mn.instructions.add(jmp);
-                        break;
-                    default:
-                        ASTUtils.error(node, "Operator not supported");
-                        break;
-                }
-                mn.instructions.add(new InsnNode(Opcodes.ICONST_0));
-                LabelNode endLabelNode = new LabelNode();
-                mn.instructions.add(new JumpInsnNode(Opcodes.GOTO, endLabelNode));
-                LabelNode trueLabelNode = new LabelNode();
-                jmp.label = trueLabelNode;
-                mn.instructions.add(trueLabelNode);
-                mn.instructions.add(new InsnNode(Opcodes.ICONST_1));
-                mn.instructions.add(endLabelNode);
-            }
-            else if (type.equals(Type.INT_TYPE)) {
-                LabelNode trueLabelNode = new LabelNode();
-                switch (op) {
-                    case EQUAL:
-                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPEQ, trueLabelNode));
-                        break;
-                    case NOT_EQUAL:
-                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPNE, trueLabelNode));
-                        break;
-                    case GREATER:
-                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPGT, trueLabelNode));
-                        break;
-                    case GREATER_EQUAL:
-                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPGE, trueLabelNode));
-                        break;
-                    case LESS:
-                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPLT, trueLabelNode));
-                        break;
-                    case LESS_EQUAL:
-                        mn.instructions.add(new JumpInsnNode(Opcodes.IF_ICMPLE, trueLabelNode));
-                        break;
-                    default:
-                        break;
-                }
-                mn.instructions.add(new InsnNode(Opcodes.ICONST_0));
-                LabelNode endLabelNode = new LabelNode();
-                mn.instructions.add(new JumpInsnNode(Opcodes.GOTO, endLabelNode));
-                mn.instructions.add(trueLabelNode);
-                mn.instructions.add(new InsnNode(Opcodes.ICONST_1));
-                mn.instructions.add(endLabelNode);
-            }
-            else {
-                ASTUtils.error(node, "Cannot compare such types.");
-            }
-        }
-        else {
-            ASTUtils.error(node, "Operator not recognized.");
-        }
-    }
 
 }

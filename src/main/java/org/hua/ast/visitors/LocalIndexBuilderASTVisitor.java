@@ -93,15 +93,13 @@ public class LocalIndexBuilderASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(ClassDefinition node) throws ASTVisitorException {
-        env.push(new LocalIndexPool());
         ASTUtils.setLocalIndexPool(node, env.element());        
         node.getFfDefinitions().accept(this);
-        env.pop();
     }
 
     @Override
     public void visit(CompUnit node) throws ASTVisitorException {
-        env.push(new LocalIndexPool());        
+        env.push(new LocalIndexPool());
         ASTUtils.setLocalIndexPool(node, env.element());
         for (ClassDefinition cd : node.getClassDefinitions()) {
             cd.accept(this);
@@ -111,10 +109,8 @@ public class LocalIndexBuilderASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(CompoundStatement node) throws ASTVisitorException {
-        env.push(new LocalIndexPool());
         ASTUtils.setLocalIndexPool(node, env.element());
         node.getStatements().accept(this);
-        env.pop();
     }
 
     @Override
@@ -167,10 +163,12 @@ public class LocalIndexBuilderASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(FunctionDefinition node) throws ASTVisitorException {
+        env.push(new LocalIndexPool());
         ASTUtils.setLocalIndexPool(node, env.element());
         node.getType().accept(this);
         node.getParameters().accept(this);
         node.getCompoundStatement().accept(this);
+        env.pop();
     }
 
     @Override
