@@ -179,6 +179,10 @@ public class ASTUtils {
     }
 
     public static boolean getIsStatic(ASTNode node) throws ASTVisitorException {
+        Boolean isstatic = (Boolean)node.getProperty(IS_STATIC);
+        if(isstatic==null){
+            return false;
+        }
         return (Boolean)node.getProperty(IS_STATIC);
     }
 

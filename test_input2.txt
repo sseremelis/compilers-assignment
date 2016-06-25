@@ -3,23 +3,18 @@
  */
 class Message {
     string text;
-    int i;
-    int j;
 
-    void print(int i1, int i2, int i3) {
-        i =0;              
-        j =1;
-        j =i+j;
+    void print() {
         write(text);
     }
     
 }
 
 class MyProgram {
+
     Message m ;
 
     void printMany(int count) {
-        int test;
         if (count > 0 ) {
             m.print();
             printMany(count-1);
@@ -28,7 +23,6 @@ class MyProgram {
     }
 
     static void main () {
-        int j;
         MyProgram p;
         p = new MyProgram () ;
         p.m = new Message () ;

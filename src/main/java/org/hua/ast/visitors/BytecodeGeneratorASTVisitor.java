@@ -466,8 +466,10 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
         ClassNode classNode = new ClassNode();
         cn = classNode;
 
-        classNode.name = node.getIdentifier();
-        classNode.access = Opcodes.ACC_PUBLIC;
+        cn.version = Opcodes.V1_5;
+        cn.superName = "java/lang/Object";
+        cn.name = node.getIdentifier();
+        cn.access = Opcodes.ACC_PUBLIC;
 
         // create constructor
         mn = new MethodNode(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
@@ -597,7 +599,13 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
         System.out.println("~~~~~~~~~~~~~~~~~~~~~ Method id: "+node.getIdentifier()+" type:"+node.getType().getTypeSpecifier());
         LocalIndexPool safeLocalIndexPool = ASTUtils.getSafeLocalIndexPool(node);
         String methodType = Type.getMethodDescriptor(node.getType().getTypeSpecifier(), node.getParameters().getParameterTypes());
-        mn = new MethodNode(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC, node.getIdentifier(), methodType, null, null);
+        int accessor = Opcodes.ACC_PUBLIC;
+        
+        if(ASTUtils.getIsStatic(node)){
+            accessor= accessor+ Opcodes.ACC_STATIC;
+        }
+        System.out.println("here");
+        mn = new MethodNode(accessor, node.getIdentifier(), methodType, null, null);
 
         node.getCompoundStatement().accept(this);
         
@@ -653,6 +661,13 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
         else {
             
             Type type = ASTUtils.getSafeType(node);
+            SymTable<SymTableEntry> symbols = Registry.getInstance().getExistingClass(Type.getType("Lorg/hua/customclasses/" + cn.name + ";"));
+            SymTableEntry csEntry = symbols.lookup(node.getIdentifier());
+            if (csEntry != null) {
+                System.out.println("()()()()()()()()()()()()");
+                mn.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, cn.name, node.getIdentifier(), csEntry.getType().getDescriptor()));
+                return;
+            }
             SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
             SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
             System.out.println("``````````` id: "+sEntry.getId());
@@ -852,13 +867,13 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
     @Override
     public void visit(WriteStatement node) throws ASTVisitorException {
 
-        node.getExpression().accept(this);
+        
         Type type = ASTUtils.getSafeType(node.getExpression());
         LocalIndexPool lip = ASTUtils.getSafeLocalIndexPool(node);
         int li = lip.getLocalIndex(type);
-        mn.instructions.add(new VarInsnNode(type.getOpcode(Opcodes.ISTORE), li));
         mn.instructions.add(new FieldInsnNode(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;"));
         mn.instructions.add(new VarInsnNode(type.getOpcode(Opcodes.ILOAD), li));
+        node.getExpression().accept(this);
         mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/io/PrintStream", "print", Type.getMethodType(Type.VOID_TYPE, type).toString(), false));
         lip.freeLocalIndex(li, type);
     }

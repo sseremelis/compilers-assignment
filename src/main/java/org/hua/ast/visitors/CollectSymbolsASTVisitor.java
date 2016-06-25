@@ -234,6 +234,7 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
             SymTableEntry s = new SymTableEntry(node.getIdentifier(),node.getType().getTypeSpecifier());
             if(node.getStorageSpecifier()!=null){
                 s.setIsStatic(true);
+                ASTUtils.setIsStatic(node, true);
             }
             symTable.put(node.getIdentifier(), s);
         } else {
