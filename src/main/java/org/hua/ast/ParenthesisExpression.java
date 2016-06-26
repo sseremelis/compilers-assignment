@@ -16,6 +16,11 @@ public class ParenthesisExpression extends Expression {
         return expression;
     }
 
+    @Override
+    public String getIdentifier() {
+        return "ParenthesisExpression";
+    }
+
     public void setExpression(Expression expression) {
         this.expression = expression;
     }

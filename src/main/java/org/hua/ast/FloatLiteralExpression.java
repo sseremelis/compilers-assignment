@@ -12,6 +12,11 @@ public class FloatLiteralExpression extends Expression {
         this.literal = literal;
     }
 
+    @Override
+    public String getIdentifier() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
     public Float getLiteral() {
         return literal;
     }

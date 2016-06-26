@@ -14,6 +14,11 @@ public class UnaryExpression extends Expression {
         this.expression = expression;
     }
 
+    @Override
+    public String getIdentifier() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
     public Operator getOperator() {
         return operator;
     }

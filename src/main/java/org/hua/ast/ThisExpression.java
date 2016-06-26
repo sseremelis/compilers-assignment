@@ -18,6 +18,11 @@ public class ThisExpression extends Expression{
     public void accept(ASTVisitor visitor) throws ASTVisitorException {
         visitor.visit(this);   
     }
+
+    @Override
+    public String getIdentifier() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
     
     
     

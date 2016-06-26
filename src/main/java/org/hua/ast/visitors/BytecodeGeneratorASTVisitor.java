@@ -107,6 +107,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 //        mn.maxStack = 1;
 //        cn.methods.add(mn);
     }
+
     private void backpatch(List<JumpInsnNode> list, LabelNode labelNode) {
         if (list == null) {
             return;
@@ -119,10 +120,10 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
     public ClassNode getClassNode() {
         return cn;
     }
-    
+
     private void handleBooleanOperator(Expression node, Operator op, Type type) throws ASTVisitorException {
         List<JumpInsnNode> trueList = new ArrayList<JumpInsnNode>();
-        
+        System.out.println("***** handle boolean "+op);
         if (type.equals(TypeUtils.STRING_TYPE)) {
             mn.instructions.add(new InsnNode(Opcodes.SWAP));
             JumpInsnNode jmp = null;
@@ -142,7 +143,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
             trueList.add(jmp);
         }
         else if (type.equals(Type.DOUBLE_TYPE)) {
-            
+
             // FIXME: add DCMPG instruction
             // FIXME: add a JumpInsnNode with null label based on the operation
             //        IFEQ, IFNE, IFGT, IFGE, IFLT, IFLE
@@ -176,9 +177,10 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
                     break;
             }
             trueList.add(jmp);
-            
+
         }
         else {
+            System.out.println("here");
             JumpInsnNode jmp = null;
             switch (op) {
                 case EQUAL:
@@ -190,6 +192,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
                     mn.instructions.add(jmp);
                     break;
                 case GREATER:
+                    System.out.println("----- greater");
                     jmp = new JumpInsnNode(Opcodes.IF_ICMPGT, null);
                     mn.instructions.add(jmp);
                     break;
@@ -218,35 +221,35 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
         falseList.add(jmp);
         ASTUtils.setFalseList(node, falseList);
     }
-    
+
     private void handleNumberOperator(ASTNode node, Operator op, Type type) throws ASTVisitorException {
         if (op.equals(Operator.PLUS)) {
-            
+
             // FIXME: IADD or DADD, etc.
             //        use type.getOpcode(Opcodes.IADD) to avoid if-then
             mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.IADD)));
-            
+
         }
         else if (op.equals(Operator.MINUS)) {
-            
+
             // FIXME: ISUB or DSUB, etc.
             //        use type.getOpcode() to avoid if-then
             mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.ISUB)));
-            
+
         }
         else if (op.equals(Operator.MULTIPLY)) {
-            
+
             // FIXME: IMUL or DMUL, etc.
             //        use type.getOpcode() to avoid if-then
             mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.IMUL)));
-            
+
         }
         else if (op.equals(Operator.DIVISION)) {
-            
+
             // FIXME: IDIV or DDIV, etc.
             //        use type.getOpcode() to avoid if-then
             mn.instructions.add(new InsnNode(type.getOpcode(Opcodes.IDIV)));
-            
+
         }
         else if (op.isRelational()) {
             if (type.equals(Type.DOUBLE_TYPE)) {
@@ -329,7 +332,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
             ASTUtils.error(node, "Operator not recognized.");
         }
     }
-    
+
     /**
      * Assumes top of stack contains two strings
      */
@@ -374,35 +377,46 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
     @Override
     public void visit(AccessorExpression node) throws ASTVisitorException {
         node.getExpression().accept(this);
+        //function access
         if (node.getExpressions() != null) {
+            
             node.getExpressions().accept(this);
+            
+            //if expressionS length is 0, no args privided
+            Type exprClass = ASTUtils.getSafeType(node.getExpression());
+            
+            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
+                    exprClass.getDescriptor(),
+                    node.getIdentifier(),
+                    Type.getMethodDescriptor(Type.VOID_TYPE, ASTUtils.getType(node.getExpression())),
+                    true));
         }
-        
-        Type exprClass = ASTUtils.getSafeType(node.getExpression());
-        mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                exprClass.getDescriptor(),
-                node.getIdentifier(),
-                Type.getMethodDescriptor(Type.VOID_TYPE, ASTUtils.getType(node.getExpression())),
-                true));
+        //field access
+        else {
+
+            mn.instructions.add(new FieldInsnNode(Opcodes.PUTFIELD, cn.name, node.getIdentifier(), ASTUtils.getSafeType(node).getDescriptor()));
+
+        }
     }
 
     @Override
     public void visit(AssignmentStatement node) throws ASTVisitorException {
-        
         node.getExpression1().accept(this);
         Type exprType1 = ASTUtils.getSafeType(node.getExpression1());
-        
+
         node.getExpression2().accept(this);
         Type exprType2 = ASTUtils.getSafeType(node.getExpression2());
 
         Type type = ASTUtils.getSafeType(node.getExpression2());
-        System.out.println("class1: "+node.getExpression1().getClass()+" class2: "+node.getExpression2().getClass());
-        LocalIndexPool lip = ASTUtils.getSafeLocalIndexPool(node);
 
+        LocalIndexPool lip = ASTUtils.getSafeLocalIndexPool(node);
         int li = lip.getLocalIndex(type);
+        //tests
+        SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node.getExpression1());
 
         widen(exprType1, exprType2);
         mn.instructions.add(new VarInsnNode(exprType2.getOpcode(Opcodes.ISTORE), li));
+        lip.freeLocalIndex(li, type);
     }
 
     @Override
@@ -419,9 +433,12 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
         if (!maxType.equals(expr2Type)) {
             widen(maxType, expr2Type);
         }
-
+        System.out.println("^^^^^^^^^^^^^^^^^^^ binary op: "+node.getOperator());
+        System.out.println("             type1: "+expr1Type+" type2: "+expr2Type);
+        System.out.println("                max type: "+!maxType.equals(expr1Type));
         // cast second from top to max
         if (!maxType.equals(expr1Type)) {
+            System.out.println("not to be dispalyed");
             LocalIndexPool lip = ASTUtils.getSafeLocalIndexPool(node);
             int localIndex = -1;
             if (expr2Type.equals(Type.DOUBLE_TYPE) || expr1Type.equals(Type.DOUBLE_TYPE)) {
@@ -433,6 +450,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
             }
             widen(maxType, expr1Type);
             if (expr2Type.equals(Type.DOUBLE_TYPE) || expr1Type.equals(Type.DOUBLE_TYPE)) {
+                
                 mn.instructions.add(new VarInsnNode(expr2Type.getOpcode(Opcodes.ILOAD), localIndex));
                 lip.freeLocalIndex(localIndex, expr2Type);
             }
@@ -483,19 +501,18 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 
         node.getFfDefinitions().accept(this);
         
-
         // IMPORTANT: this should be dynamically calculated
         // use COMPUTE_MAXS when computing the ClassWriter,
         // e.g. new ClassWriter(ClassWriter.COMPUTE_MAXS)
         ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS + ClassWriter.COMPUTE_FRAMES);
-        TraceClassVisitor cv = new TraceClassVisitor(cw, new PrintWriter(System.out));
         
-        cn.accept(cv);
-        System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ here   ");
+        TraceClassVisitor cv = new TraceClassVisitor(cw, new PrintWriter(System.out));
+
+//        cn.accept(cv);
         //get code
         byte code[] = cw.toByteArray();
 
-        Logger.getLogger(BytecodeGeneratorASTVisitor.class.getName()).info("Writing "+node.getIdentifier()+" class to .class file");
+        Logger.getLogger(BytecodeGeneratorASTVisitor.class.getName()).info("Writing " + node.getIdentifier() + " class to .class file");
         // update to file
         FileOutputStream fos;
         try {
@@ -525,7 +542,6 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
     @Override
     public void visit(CompoundStatement node) throws ASTVisitorException {
         node.getStatements().accept(this);
-        
     }
 
     @Override
@@ -539,7 +555,6 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
     public void visit(DeclarationStatement node) throws ASTVisitorException {
         SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
         SymTableEntry lookup = sTable.lookup(node.getIdentifier());
-        System.out.println("%%% id:"+node.getIdentifier()+"  index: "+lookup.getIndex());
         node.getType().accept(this);
         //nothing??
     }
@@ -592,30 +607,26 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(FunctionDefinition node) throws ASTVisitorException {
-        //store the closest method somehow
-        //fix the signature
-        MethodNode methodNode = new MethodNode();
-        mn = methodNode;
-        System.out.println("~~~~~~~~~~~~~~~~~~~~~ Method id: "+node.getIdentifier()+" type:"+node.getType().getTypeSpecifier());
+        //fix the signature       
+        System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~ "+node.getIdentifier()+" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
         LocalIndexPool safeLocalIndexPool = ASTUtils.getSafeLocalIndexPool(node);
         String methodType = Type.getMethodDescriptor(node.getType().getTypeSpecifier(), node.getParameters().getParameterTypes());
         int accessor = Opcodes.ACC_PUBLIC;
-        
-        if(ASTUtils.getIsStatic(node)){
-            accessor= accessor+ Opcodes.ACC_STATIC;
+        if (ASTUtils.getIsStatic(node)) {
+            accessor = accessor + Opcodes.ACC_STATIC;
         }
-        System.out.println("here");
-        mn = new MethodNode(accessor, node.getIdentifier(), methodType, null, null);
+        MethodNode methodNode = new MethodNode(accessor, node.getIdentifier(), methodType, null, null);
+        mn = methodNode;
 
         node.getCompoundStatement().accept(this);
         
         mn.instructions.add(new InsnNode(Opcodes.RETURN));
-        
+            
         // IMPORTANT: this should be dynamically calculated
         // use COMPUTE_MAXS when computing the ClassWriter,
         // e.g. new ClassWriter(ClassWriter.COMPUTE_MAXS)
         cn.methods.add(mn);
-        
+
         mn = null;
     }
 
@@ -627,9 +638,9 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
             SymTableEntry sEntry = symbols.lookup(node.getIdentifier());
             if (sEntry != null) {
                 mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                        Type.getType("Lorg/hua/customclasses/" + cn.name + ";").getDescriptor(), 
-                        node.getIdentifier(), 
-                        Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE), 
+                        Type.getType("Lorg/hua/customclasses/" + cn.name + ";").getDescriptor(),
+                        node.getIdentifier(),
+                        Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE),
                         true));
             }
             else {
@@ -659,18 +670,18 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 //            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, string, string1, string2, true));
         }
         else {
-            
+
             Type type = ASTUtils.getSafeType(node);
             SymTable<SymTableEntry> symbols = Registry.getInstance().getExistingClass(Type.getType("Lorg/hua/customclasses/" + cn.name + ";"));
             SymTableEntry csEntry = symbols.lookup(node.getIdentifier());
             if (csEntry != null) {
-                System.out.println("()()()()()()()()()()()()");
+
                 mn.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, cn.name, node.getIdentifier(), csEntry.getType().getDescriptor()));
                 return;
             }
             SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
             SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
-            System.out.println("``````````` id: "+sEntry.getId());
+
             mn.instructions.add(new VarInsnNode(type.getOpcode(Opcodes.ILOAD), sEntry.getIndex()));
         }
     }
@@ -799,20 +810,19 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
             if (!ASTUtils.getBreakList(s).isEmpty()) {
                 ASTUtils.error(s, "Break detected without a loop.");
             }
-            
+
             if (!ASTUtils.getContinueList(s).isEmpty()) {
                 ASTUtils.error(s, "Continue detected without a loop.");
             }
-            
+
         }
-        
-        if (s != null && !ASTUtils.getNextList(s).isEmpty()) {        
+
+        if (s != null && !ASTUtils.getNextList(s).isEmpty()) {
             LabelNode labelNode = new LabelNode();
             mn.instructions.add(labelNode);
             backpatch(ASTUtils.getNextList(s), labelNode);
         }
-        
-        
+
     }
 
     @Override
@@ -827,7 +837,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
     }
 
     @Override
-    public void visit(UnaryExpression node) throws ASTVisitorException{
+    public void visit(UnaryExpression node) throws ASTVisitorException {
         node.getExpression().accept(this);
 
         Type type = ASTUtils.getSafeType(node.getExpression());
@@ -867,7 +877,6 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
     @Override
     public void visit(WriteStatement node) throws ASTVisitorException {
 
-        
         Type type = ASTUtils.getSafeType(node.getExpression());
         LocalIndexPool lip = ASTUtils.getSafeLocalIndexPool(node);
         int li = lip.getLocalIndex(type);
@@ -894,7 +903,6 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 //        System.out.println("~~~~ "+ASTUtils.getSafeType(node).getDescriptor());
         mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, ASTUtils.getSafeType(node).getDescriptor(), "<init>", "()V", false));
     }
-
 
     /**
      * Cast the top of the stack to a particular type
@@ -929,6 +937,5 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
             }
         }
     }
-
 
 }

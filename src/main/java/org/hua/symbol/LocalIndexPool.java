@@ -41,7 +41,7 @@ public class LocalIndexPool {
     public void freeLocalIndex(int i, Type type) {
         if (type.equals(Type.DOUBLE_TYPE)) {
             freeDoubleLocalIndex(i);
-        } else if (type.equals(Type.INT_TYPE) || type.equals(TypeUtils.STRING_TYPE)) {
+        } else if (type.equals(Type.INT_TYPE) || type.equals(TypeUtils.STRING_TYPE)  || type.getDescriptor().contains("Lorg/hua/customclasses/")) {
             freeLocalIndex(i);
         } else {
             throw new IllegalArgumentException("Not supported type " + type);

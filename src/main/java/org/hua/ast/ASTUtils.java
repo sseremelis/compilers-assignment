@@ -273,5 +273,10 @@ public class ASTUtils {
     public static Integer getIndex(ASTNode node) throws ASTVisitorException{
         return 0;
     }
+    
+    public static Integer getIndexFromExpression(ASTNode node) throws ASTVisitorException{
+        
+        return 0;
+    }
 
 }
