@@ -77,20 +77,8 @@ public class Compiler5 {
                     LOGGER.info("Bytecode:");
                     BytecodeGeneratorASTVisitor bytecodeVisitor = new BytecodeGeneratorASTVisitor();
                     compUnit.accept(bytecodeVisitor);
-//                    ClassNode cn = bytecodeVisitor.getClassNode();
-//                    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS + ClassWriter.COMPUTE_FRAMES);
-//                    TraceClassVisitor cv = new TraceClassVisitor(cw, new PrintWriter(System.out));
-//                    cn.accept(cv);
-                    // get code
-//                    byte code[] = cw.toByteArray();
+                    LOGGER.info("Compilation Done");
 
-//                    // update to file
-//                    LOGGER.info("Writing class to file Assignment.class");
-//                    FileOutputStream fos = new FileOutputStream("Assignment.class");
-//                    fos.write(code);
-//                    fos.close();
-//                    LOGGER.info("Compilation done");
-//
 //                    // instantiate class
 //                    LOGGER.info("Loading class Assignment.class");
 //                    ReloadingClassLoader rcl = new ReloadingClassLoader(ClassLoader.getSystemClassLoader());
@@ -110,6 +98,7 @@ public class Compiler5 {
                     LOGGER.error("IO error scanning file \"" + args[i] + "\"");
                     LOGGER.error(e.toString());
                 } catch (Exception e) {
+                    e.printStackTrace();
                     LOGGER.error(e.getMessage());
                     //e.printStackTrace();
                 }

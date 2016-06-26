@@ -4,6 +4,8 @@
  */
 package org.hua.ast;
 
+import org.objectweb.asm.Type;
+
 public class FloatLiteralExpression extends Expression {
 
     private Float literal;
@@ -19,6 +21,10 @@ public class FloatLiteralExpression extends Expression {
 
     public Float getLiteral() {
         return literal;
+    }
+
+    public Type getType() {
+        return Type.FLOAT_TYPE;
     }
 
     public void setLiteral(Float literal) {

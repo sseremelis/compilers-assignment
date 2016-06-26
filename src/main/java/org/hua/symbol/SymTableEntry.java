@@ -1,5 +1,7 @@
 package org.hua.symbol;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import org.objectweb.asm.Type;
 
 public class SymTableEntry {
@@ -48,6 +50,15 @@ public class SymTableEntry {
 
     public SymTable<SymTableEntry> getParameters() {
         return parameters;
+    }
+    
+    public Type[] getParametersTypes(){
+        ArrayList<Type> typesList = new ArrayList();
+        Collection<SymTableEntry> symbols = parameters.getSymbols();
+        for(SymTableEntry e : symbols){
+            typesList.add(e.getType());
+        }
+        return typesList.toArray(new Type[typesList.size()]);
     }
 
     public void setParameters(SymTable<SymTableEntry> parameters) {

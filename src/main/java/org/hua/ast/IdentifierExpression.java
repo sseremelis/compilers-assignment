@@ -5,6 +5,8 @@
  */
 package org.hua.ast;
 
+import org.objectweb.asm.Type;
+
 /**
  *
  * @author sssotiris22
@@ -13,6 +15,10 @@ public class IdentifierExpression extends Expression{
     
     private String identifier;
     private ExpressionList expressions;
+
+    public Type getType() {
+        return null;
+    }
 
     public boolean isFunction() {
         return expressions!=null;

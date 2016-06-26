@@ -9,6 +9,9 @@ import org.objectweb.asm.Type;
 public abstract class Expression extends ASTNode {
     
     public abstract String getIdentifier();
+
+//    public abstract Type getType();
+    
     
     
 }
