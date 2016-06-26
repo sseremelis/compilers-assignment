@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.hua.Registry;
@@ -91,6 +92,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 
     private ClassNode cn;
     private MethodNode mn;
+    private boolean previousIsIdentifier = false;
 
     public BytecodeGeneratorASTVisitor() {
         // create class
@@ -103,7 +105,6 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 
 //        // create constructor
 //        mn = new MethodNode(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
-//        mn.instructions.add(new VarInsnNode(Opcodes.ALOAD, 0));
 //        mn.instructions.add(new MethodInsnNode(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V"));
 //        mn.instructions.add(new InsnNode(Opcodes.RETURN));
 //        mn.maxLocals = 1;
@@ -390,29 +391,54 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
             Type exprClass = ASTUtils.getSafeType(node.getExpression());
             SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
             SymTableEntry lookup = sTable.lookup(node.getIdentifier());
+            System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$4 " + node.getIdentifier());
             if (lookup != null) {
                 mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                        exprClass.getDescriptor(),
+                        exprClass.getInternalName(),
                         node.getIdentifier(),
                         Type.getMethodDescriptor(lookup.getType(), lookup.getParametersTypes()),
                         true));
             }
+            else {
+                Map<Type, SymTable<SymTableEntry>> classes = Registry.getInstance().getClasses();
+                Iterator<Map.Entry<Type, SymTable<SymTableEntry>>> entries = classes.entrySet().iterator();
+                while (entries.hasNext()) {
+                    Map.Entry<Type, SymTable<SymTableEntry>> entry = entries.next();
+                    if (entry.getValue().lookup(node.getIdentifier()) != null) {
+                        SymTableEntry lookup1 = entry.getValue().lookup(node.getIdentifier());
+                        System.out.println("entry key: " + entry.getKey().getDescriptor());
+                        mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
+                                entry.getKey().getInternalName(),
+                                node.getIdentifier(),
+                                Type.getMethodDescriptor(lookup1.getType(), lookup1.getParametersTypes()),
+                                true));
+                        break;
+                    }
+                }
+            }
         }
         //field access
         else {
-
-            mn.instructions.add(new FieldInsnNode(Opcodes.PUTFIELD, cn.name, node.getIdentifier(), ASTUtils.getSafeType(node).getDescriptor()));
+            System.out.println("+++++++++++++++++++++++++> HEY " + node.getIdentifier());
+            if (node.getExpression().getClass() != IdentifierExpression.class  && previousIsIdentifier) {
+                System.out.println("+++++++++++++++++++++++++++++++++++++++++++---> " + node.getIdentifier());
+                mn.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, cn.name, node.getIdentifier(), ASTUtils.getSafeType(node).getDescriptor()));
+            }
+            else {
+                mn.instructions.add(new FieldInsnNode(Opcodes.PUTFIELD, cn.name, node.getIdentifier(), ASTUtils.getSafeType(node).getDescriptor()));
+            }
 
         }
     }
 
     @Override
     public void visit(AssignmentStatement node) throws ASTVisitorException {
-        node.getExpression1().accept(this);
-        Type exprType1 = ASTUtils.getSafeType(node.getExpression1());
 
         node.getExpression2().accept(this);
         Type exprType2 = ASTUtils.getSafeType(node.getExpression2());
+
+        node.getExpression1().accept(this);
+        Type exprType1 = ASTUtils.getSafeType(node.getExpression1());
 
         Type type = ASTUtils.getSafeType(node.getExpression2());
 
@@ -423,7 +449,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
         Integer index = ASTUtils.getIndex(node.getExpression1());
         System.out.println("***** class: " + node.getExpression1().getClass() + " index: " + index + " old index: " + li);
         widen(exprType1, exprType2);
-        mn.instructions.add(new VarInsnNode(exprType2.getOpcode(Opcodes.ISTORE), li));
+//        mn.instructions.add(new VarInsnNode(exprType2.getOpcode(Opcodes.ISTORE), li));
         lip.freeLocalIndex(li, type);
     }
 
@@ -458,7 +484,6 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
             }
             widen(maxType, expr1Type);
             if (expr2Type.equals(Type.DOUBLE_TYPE) || expr1Type.equals(Type.DOUBLE_TYPE)) {
-
                 mn.instructions.add(new VarInsnNode(expr2Type.getOpcode(Opcodes.ILOAD), localIndex));
                 lip.freeLocalIndex(localIndex, expr2Type);
             }
@@ -618,13 +643,23 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
     public void visit(FunctionDefinition node) throws ASTVisitorException {
         //fix the signature       
         System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~ " + node.getIdentifier() + " ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+        if (node.getStorageSpecifier() == null) {   //if the function is static
+            LocalIndexPool safeLocalIndexPool = ASTUtils.getSafeLocalIndexPool(node);
+            int localIndex = safeLocalIndexPool.getLocalIndex();
+        }
         LocalIndexPool safeLocalIndexPool = ASTUtils.getSafeLocalIndexPool(node);
         String methodType = Type.getMethodDescriptor(node.getType().getTypeSpecifier(), node.getParameters().getParameterTypes());
         int accessor = Opcodes.ACC_PUBLIC;
         if (ASTUtils.getIsStatic(node)) {
             accessor = accessor + Opcodes.ACC_STATIC;
         }
-        MethodNode methodNode = new MethodNode(accessor, node.getIdentifier(), methodType, null, null);
+        MethodNode methodNode;
+        if (node.getIdentifier().equals("main")) {
+            methodNode = new MethodNode(accessor, node.getIdentifier(), "([Ljava/lang/String;)V", null, null);
+        }
+        else {
+            methodNode = new MethodNode(accessor, node.getIdentifier(), methodType, null, null);
+        }
         mn = methodNode;
 
         node.getParameters().accept(this);
@@ -641,13 +676,14 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(IdentifierExpression node) throws ASTVisitorException {
+        previousIsIdentifier = false;
         if (node.getExpressions() != null) {
             node.getExpressions().accept(this);
             SymTable<SymTableEntry> symbols = Registry.getInstance().getExistingClass(Type.getType("Lorg/hua/customclasses/" + cn.name + ";"));
             SymTableEntry sEntry = symbols.lookup(node.getIdentifier());
             if (sEntry != null) {
                 mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                        Type.getType("Lorg/hua/customclasses/" + cn.name + ";").getDescriptor(),
+                        Type.getType("Lorg/hua/customclasses/" + cn.name + ";").getInternalName(),
                         node.getIdentifier(),
                         Type.getMethodDescriptor(Type.VOID_TYPE, Type.INT_TYPE),
                         false));
@@ -675,14 +711,13 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
                     ASTUtils.error(node, "This static(?) method could not be found");
                 }
             }
-//            Registry.getInstance().getExistingClass(Type.getType("Lorg/hua/customclasses/"+cn.name));
-//            mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, string, string1, string2, true));
         }
         else {
 
             Type type = ASTUtils.getSafeType(node);
             SymTable<SymTableEntry> symbols = Registry.getInstance().getExistingClass(Type.getType("Lorg/hua/customclasses/" + cn.name + ";"));
             SymTableEntry csEntry = symbols.lookup(node.getIdentifier());
+            //i think this is useless, because fields are not seperate identifier, but string ids in accessorExpressions
             if (csEntry != null) {
 
                 mn.instructions.add(new FieldInsnNode(Opcodes.GETFIELD, cn.name, node.getIdentifier(), csEntry.getType().getDescriptor()));
@@ -690,8 +725,10 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
             }
             SymTable<SymTableEntry> sTable = ASTUtils.getSafeEnv(node);
             SymTableEntry sEntry = sTable.lookup(node.getIdentifier());
-
+            
+            previousIsIdentifier = true;
             mn.instructions.add(new VarInsnNode(type.getOpcode(Opcodes.ILOAD), sEntry.getIndex()));
+            System.out.println("&&&&&&&&&&&&&&&&&&&&&&&&&&&& INDEX: " + sEntry.getIndex() + " id: " + node.getIdentifier());
         }
     }
 
@@ -841,6 +878,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
     @Override
     public void visit(StringLiteralExpression node) throws ASTVisitorException {
         String s = node.getLiteral();
+        System.out.println("25252525252252525252525225252525252525225252525252552522252525252525252252525252525525222525252525252522525252525255252");
         mn.instructions.add(new LdcInsnNode(s));
     }
 
@@ -915,31 +953,28 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
         //@TODO: fix calling parameters
         if (node.getExpressions() != null) {
             if (node.getExpressions().getExpressions().isEmpty() && Registry.getInstance().classExists(Type.getType("Lorg/hua/customclasses/" + node.getIdentifier() + ";"))) {
-                System.out.println("222222222222222222222 it's in");
-                mn.instructions.add(new MethodInsnNode(Opcodes.INVOKESPECIAL, ASTUtils.getSafeType(node).getDescriptor(), "<init>", "()V", false));
+                System.out.println("222222222222222222222222222222222222222222 " + ASTUtils.getSafeType(node).getInternalName());
+                mn.instructions.add(new MethodInsnNode(Opcodes.INVOKESPECIAL, ASTUtils.getSafeType(node).getInternalName(), "<init>", "()V", false));
             }
             else //get parameter types and then give that as the signature
-            if (Registry.getInstance().classExists(Type.getType("Lorg/hua/customclasses/" + node.getIdentifier() + ";"))) {
-                SymTable<SymTableEntry> existingClass = Registry.getInstance().getExistingClass(Type.getType("Lorg/hua/customclasses/" + node.getIdentifier() + ";"));
-                SymTableEntry lookup = existingClass.lookup(node.getIdentifier());
-                if (lookup != null) {
-                    Type[] types = lookup.getParametersTypes();
-                    mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                            ASTUtils.getSafeType(node).getDescriptor(),
-                            node.getIdentifier(), Type.getMethodDescriptor(Type.VOID_TYPE, types),
-                            false));
+             if (Registry.getInstance().classExists(Type.getType("Lorg/hua/customclasses/" + node.getIdentifier() + ";"))) {
+                    SymTable<SymTableEntry> existingClass = Registry.getInstance().getExistingClass(Type.getType("Lorg/hua/customclasses/" + node.getIdentifier() + ";"));
+                    SymTableEntry lookup = existingClass.lookup(node.getIdentifier());
+                    if (lookup != null) {
+                        Type[] types = lookup.getParametersTypes();
+                        mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
+                                ASTUtils.getSafeType(node).getInternalName(),
+                                node.getIdentifier(), Type.getMethodDescriptor(Type.VOID_TYPE, types),
+                                false));
+                    }
+                    else {
+                        ASTUtils.error(node, "Constructor not found");
+                    }
                 }
                 else {
-                    ASTUtils.error(node, "Constructor not found");
+                    ASTUtils.error(node, "Problem with called constructor");
                 }
-            }
-            else {
-                ASTUtils.error(node, "Problem with called constructor");
-            }
         }
-//        System.out.println("~~~~ "+ASTUtils.getSafeType(node).getDescriptor());
-
-//        mn.instructions.add(new VarInsnNode(Opcodes.ASTORE, 0));
     }
 
     /**

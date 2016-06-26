@@ -53,7 +53,11 @@ public class SymTableEntry {
     }
     
     public Type[] getParametersTypes(){
+        System.out.println("^^^^^^");
         ArrayList<Type> typesList = new ArrayList();
+        if(parameters==null){
+            return new Type[0];
+        }
         Collection<SymTableEntry> symbols = parameters.getSymbols();
         for(SymTableEntry e : symbols){
             typesList.add(e.getType());
