@@ -92,6 +92,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 
     private ClassNode cn;
     private MethodNode mn;
+    private FunctionDefinition fd;
     private boolean previousIsIdentifier = false;
 
     public BytecodeGeneratorASTVisitor() {
@@ -397,7 +398,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
                         exprClass.getInternalName(),
                         node.getIdentifier(),
                         Type.getMethodDescriptor(lookup.getType(), lookup.getParametersTypes()),
-                        true));
+                        false));
             }
             else {
                 Map<Type, SymTable<SymTableEntry>> classes = Registry.getInstance().getClasses();
@@ -411,7 +412,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
                                 entry.getKey().getInternalName(),
                                 node.getIdentifier(),
                                 Type.getMethodDescriptor(lookup1.getType(), lookup1.getParametersTypes()),
-                                true));
+                                false));
                         break;
                     }
                 }
@@ -641,6 +642,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 
     @Override
     public void visit(FunctionDefinition node) throws ASTVisitorException {
+        fd = node;
         //fix the signature       
         System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~ " + node.getIdentifier() + " ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
         if (node.getStorageSpecifier() == null) {   //if the function is static
@@ -671,6 +673,7 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
 
         cn.methods.add(mn);
 
+        fd = null;
         mn = null;
     }
 
@@ -932,7 +935,8 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
         LocalIndexPool lip = ASTUtils.getSafeLocalIndexPool(node);
         int li = lip.getLocalIndex(type);
         mn.instructions.add(new FieldInsnNode(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;"));
-        mn.instructions.add(new VarInsnNode(type.getOpcode(Opcodes.ILOAD), li));
+        System.out.println("***************************************************************-------------------------------------------------------------- "+li);
+        mn.instructions.add(new VarInsnNode(type.getOpcode(Opcodes.ILOAD), 0));
         node.getExpression().accept(this);
         mn.instructions.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, "java/io/PrintStream", "print", Type.getMethodType(Type.VOID_TYPE, type).toString(), false));
         lip.freeLocalIndex(li, type);
@@ -975,6 +979,10 @@ public class BytecodeGeneratorASTVisitor implements ASTVisitor {
                     ASTUtils.error(node, "Problem with called constructor");
                 }
         }
+        LocalIndexPool pool = ASTUtils.getSafeLocalIndexPool(fd);
+        int localIndex = pool.getLocalIndex();
+        System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "+localIndex);
+        mn.instructions.add(new VarInsnNode(Opcodes.ASTORE, localIndex));
     }
 
     /**

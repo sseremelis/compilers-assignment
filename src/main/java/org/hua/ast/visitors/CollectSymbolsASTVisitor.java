@@ -220,7 +220,7 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
         
         
         LocalIndexPool safeLocalIndexPool = ASTUtils.getSafeLocalIndexPool(node);
-        int localIndex = safeLocalIndexPool.getLocalIndex();
+//        int localIndex = safeLocalIndexPool.getLocalIndex();
         
         if(node.getIdentifier().equals("main") 
                 && node.getType().getType().equals(Type.VOID_TYPE)
@@ -247,7 +247,7 @@ public class CollectSymbolsASTVisitor implements ASTVisitor {
         node.getParameters().accept(this);
 
         node.getCompoundStatement().accept(this);
-        safeLocalIndexPool.freeLocalIndex(localIndex);
+//        safeLocalIndexPool.freeLocalIndex(localIndex);
     }
 
     @Override
